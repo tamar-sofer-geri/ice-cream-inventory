@@ -3,51 +3,93 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#f7a8c4" />
+  <meta name="theme-color" content="#3b82c4" />
   <!-- Add-to-home-screen support -->
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-  <meta name="apple-mobile-web-app-title" content="Ice Cream" />
+  <meta name="apple-mobile-web-app-title" content="Geri's Glideria" />
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="apple-touch-icon" href="apple-touch-icon.png" />
   <link rel="icon" href="icon.svg" type="image/svg+xml" />
-  <title>Ice Cream Inventory</title>
+  <title>Geri's Glideria</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <div class="app">
     <header class="app-header">
-      <h1 class="app-title">Ice Cream</h1>
-      <button id="add-btn" class="add-btn" type="button" aria-label="Add a container">+</button>
+      <div class="brand">
+        <img class="brand-logo" src="icon.svg" alt="" width="40" height="40" />
+        <h1 class="app-title">Geri's Glideria</h1>
+      </div>
+      <button id="add-btn" class="add-btn" type="button" aria-label="Add containers">+</button>
     </header>
 
+    <p id="sync-note" class="sync-note" hidden></p>
+
     <main>
-      <ul id="inventory-list" class="inventory-list" aria-live="polite"></ul>
-      <p id="empty-state" class="empty-state" hidden>
-        No containers yet. Tap <span aria-hidden="true">+</span> to add one.
-      </p>
+      <!-- Containers view -->
+      <section id="view-containers" class="view" aria-label="Containers">
+        <ul id="inventory-list" class="inventory-list" aria-live="polite"></ul>
+        <p id="empty-state" class="empty-state" hidden>
+          No containers yet. Tap <span aria-hidden="true">+</span> to add some.
+        </p>
+      </section>
+
+      <!-- Inventory (counts) view -->
+      <section id="view-inventory" class="view" aria-label="Inventory" hidden>
+        <ul id="summary-list" class="summary-list" aria-live="polite"></ul>
+        <p id="summary-empty" class="empty-state" hidden>Nothing in stock yet.</p>
+      </section>
     </main>
   </div>
 
-  <!-- Add-flavor modal -->
+  <!-- Bottom tab navigation -->
+  <nav class="tabbar" aria-label="Views">
+    <button class="tab is-active" type="button" data-view="containers" aria-current="page">
+      <span class="tab-icon" aria-hidden="true">🍨</span>
+      <span>Containers</span>
+    </button>
+    <button class="tab" type="button" data-view="inventory">
+      <span class="tab-icon" aria-hidden="true">📋</span>
+      <span>Inventory</span>
+    </button>
+  </nav>
+
+  <!-- Add-containers modal -->
   <div id="add-modal" class="modal" hidden>
     <div class="modal-backdrop" data-close></div>
     <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-title">
-      <h2 id="modal-title">Add a container</h2>
+      <h2 id="modal-title">Add containers</h2>
       <form id="add-form">
         <label for="flavor-input">Flavor</label>
         <input id="flavor-input" name="flavor" type="text" autocomplete="off"
                placeholder="e.g. Vanilla" list="flavor-suggestions" required />
         <datalist id="flavor-suggestions"></datalist>
+
+        <div class="field-row">
+          <div class="field">
+            <label for="qty-input">How many</label>
+            <input id="qty-input" name="qty" type="number" inputmode="numeric"
+                   min="1" step="1" value="1" required />
+          </div>
+          <div class="field">
+            <label for="date-input">Date made</label>
+            <input id="date-input" name="date" type="date" required />
+          </div>
+        </div>
+
         <div class="modal-actions">
           <button type="button" class="btn btn-ghost" data-close>Cancel</button>
-          <button type="submit" class="btn btn-primary">Add full tub</button>
+          <button type="submit" class="btn btn-primary">Add</button>
         </div>
       </form>
     </div>
   </div>
 
+  <!-- Supabase client (no build step) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
