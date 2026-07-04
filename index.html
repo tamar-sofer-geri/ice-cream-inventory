@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#f7a8c4" />
+  <!-- Add-to-home-screen support -->
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Ice Cream" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <title>Ice Cream Inventory</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="app-header">
+      <h1 class="app-title">Ice Cream</h1>
+      <button id="add-btn" class="add-btn" type="button" aria-label="Add a container">+</button>
+    </header>
+
+    <main>
+      <ul id="inventory-list" class="inventory-list" aria-live="polite"></ul>
+      <p id="empty-state" class="empty-state" hidden>
+        No containers yet. Tap <span aria-hidden="true">+</span> to add one.
+      </p>
+    </main>
+  </div>
+
+  <!-- Add-flavor modal -->
+  <div id="add-modal" class="modal" hidden>
+    <div class="modal-backdrop" data-close></div>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <h2 id="modal-title">Add a container</h2>
+      <form id="add-form">
+        <label for="flavor-input">Flavor</label>
+        <input id="flavor-input" name="flavor" type="text" autocomplete="off"
+               placeholder="e.g. Vanilla" list="flavor-suggestions" required />
+        <datalist id="flavor-suggestions"></datalist>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" data-close>Cancel</button>
+          <button type="submit" class="btn btn-primary">Add full tub</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
