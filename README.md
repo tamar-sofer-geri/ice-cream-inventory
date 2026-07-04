@@ -12,7 +12,7 @@ The container icon on the left reflects the current fill (full or ½). Your inve
 
 ## Live app
 
-_(GitHub Pages URL will go here once published.)_
+**<https://tamar-sofer-geri.github.io/ice-cream-inventory/>**
 
 On your phone, open the link and use your browser's **Add to Home Screen** to install it like an app.
 
