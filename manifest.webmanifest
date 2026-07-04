@@ -1,12 +1,12 @@
 {
-  "name": "Ice Cream Inventory",
-  "short_name": "Ice Cream",
-  "description": "Track full and half containers of ice cream.",
+  "name": "Geri's Glideria",
+  "short_name": "Glideria",
+  "description": "Track full and half containers of ice cream, synced across devices.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#fff7fa",
-  "theme_color": "#f7a8c4",
+  "background_color": "#eef4fc",
+  "theme_color": "#3b82c4",
   "icons": [
     {
       "src": "icon.svg",
