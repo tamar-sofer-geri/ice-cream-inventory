@@ -264,7 +264,7 @@ html, body {
 .low-flag {
   position: absolute;
   top: -8px;
-  right: -9px;
+  right: -12px;
   font-size: 15px;
   line-height: 1;
 }
