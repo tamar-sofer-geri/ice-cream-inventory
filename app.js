@@ -276,7 +276,21 @@
   }
 
   function renderInventory(sorted) {
-    var groups = groupByFlavor(sorted);
+    // Flavors currently in stock...
+    var byKey = {}, order = [];
+    groupByFlavor(sorted).forEach(function (g) {
+      var key = g.flavor.toLowerCase();
+      byKey[key] = { flavor: g.flavor, items: g.items };
+      order.push(key);
+    });
+    // ...plus flavors we've made before, so they stay on the list at 0.
+    consumptions.forEach(function (c) {
+      var key = c.flavor.toLowerCase();
+      if (!(key in byKey)) { byKey[key] = { flavor: c.flavor, items: [] }; order.push(key); }
+    });
+    var groups = order.map(function (k) { return byKey[k]; })
+      .sort(function (a, b) { return a.flavor.toLowerCase().localeCompare(b.flavor.toLowerCase()); });
+
     summaryEl.innerHTML = "";
     summaryEmptyEl.hidden = groups.length > 0;
 
@@ -290,30 +304,42 @@
       head.type = "button";
       head.className = "summary-head";
       head.setAttribute("aria-expanded", expanded[key] ? "true" : "false");
-      head.setAttribute("aria-label", g.items.length + " " + g.flavor);
+      var low = g.items.length <= 1;
+      head.setAttribute("aria-label", g.items.length + " " + g.flavor +
+        (g.items.length === 0 ? " (out of stock)" : low ? " (low stock)" : ""));
 
       var count = document.createElement("span");
       count.className = "summary-count";
       count.setAttribute("aria-hidden", "true");
       count.innerHTML = countTubSVG(g.items.length);
+      if (low) {
+        var flag = document.createElement("span");
+        flag.className = "low-flag";
+        flag.textContent = "❗";
+        count.appendChild(flag);
+      }
 
       var flavor = document.createElement("span");
       flavor.className = "summary-flavor";
       flavor.textContent = g.flavor;
 
-      var caret = document.createElement("span");
-      caret.className = "summary-caret";
-      caret.setAttribute("aria-hidden", "true");
-      caret.textContent = "›";
-
       head.appendChild(count);
       head.appendChild(flavor);
-      head.appendChild(caret);
-      head.addEventListener("click", function () {
-        expanded[key] = !expanded[key];
-        li.classList.toggle("open", expanded[key]);
-        head.setAttribute("aria-expanded", expanded[key] ? "true" : "false");
-      });
+
+      if (g.items.length > 0) {
+        var caret = document.createElement("span");
+        caret.className = "summary-caret";
+        caret.setAttribute("aria-hidden", "true");
+        caret.textContent = "›";
+        head.appendChild(caret);
+        head.addEventListener("click", function () {
+          expanded[key] = !expanded[key];
+          li.classList.toggle("open", expanded[key]);
+          head.setAttribute("aria-expanded", expanded[key] ? "true" : "false");
+        });
+      } else {
+        head.classList.add("no-expand");
+      }
 
       var dates = document.createElement("ul");
       dates.className = "summary-dates";

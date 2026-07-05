@@ -259,7 +259,16 @@ html, body {
   width: 34px;
   height: 36px;
   color: var(--accent-ink);
+  position: relative;
 }
+.low-flag {
+  position: absolute;
+  top: -8px;
+  right: -9px;
+  font-size: 15px;
+  line-height: 1;
+}
+.summary-head.no-expand { cursor: default; }
 .count-tub-svg {
   display: block;
   width: 100%;
