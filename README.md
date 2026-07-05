@@ -13,7 +13,9 @@ There are two pages, switched via the bottom tab bar:
 - **Containers** — every container, sorted alphabetically so the same flavors group together. Each shows a tub icon (filled = full, outline with ½ = half) and its date.
 - **Inventory** — a running tally of **empty containers** at the top, plus a count per flavor (e.g. "3 Vanilla"). Tap a flavor to expand it and see the date each container was made.
 
-Whenever a container is finished (the **Full** button, or **Half** on a container that was already half), the empty-container tally goes up by one. **Reset** zeroes it (e.g. after you recycle the empties).
+Whenever a container is finished (the **Full** button, or **Half** on a container that was already half), the empty-container tally goes up by one. Adding new tubs draws the tally back **down** by however many you add (it never goes below zero), on the assumption you refilled empties. **Reset** zeroes it manually.
+
+A full container shows both **Full** and **Half**; a half container shows only **Half** (that's all that's left in it).
 
 Changes made on one device appear on the others automatically (real-time). A `localStorage` copy is kept as an offline cache so the app still paints instantly if the network is momentarily unavailable.
 

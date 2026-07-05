@@ -72,6 +72,15 @@
       '</svg>';
   }
 
+  // An outline tub with a count inside — used for the inventory flavor counts.
+  function countTubSVG(n) {
+    return '<svg class="count-tub-svg" viewBox="0 0 24 26">' +
+      '<path class="lid" d="M2.6 3.2 h18.8 a2.4 2.4 0 0 1 0 4.8 h-18.8 a2.4 2.4 0 0 1 0 -4.8 z"/>' +
+      '<path class="body" d="M3.6 7.6 h16.8 l-1.9 15.1 a1.4 1.4 0 0 1 -1.4 1.2 h-10.2 a1.4 1.4 0 0 1 -1.4 -1.2 z"/>' +
+      '<text class="count-num" x="12" y="18.7" text-anchor="middle">' + n + '</text>' +
+      '</svg>';
+  }
+
   function byFlavorThenDate(a, b) {
     var f = a.flavor.toLowerCase().localeCompare(b.flavor.toLowerCase());
     if (f !== 0) return f;
@@ -193,12 +202,17 @@
     var actions = document.createElement("span");
     actions.className = "row-actions";
 
-    var fullBtn = document.createElement("button");
-    fullBtn.type = "button";
-    fullBtn.className = "btn btn-full";
-    fullBtn.textContent = "Full";
-    fullBtn.setAttribute("aria-label", "Ate a full container of " + item.flavor);
-    fullBtn.addEventListener("click", function () { eatFull(item.id); });
+    // A full container can be eaten whole (Full) or halved (Half).
+    // A half container only has the remaining half left, so only Half shows.
+    if (item.state === "full") {
+      var fullBtn = document.createElement("button");
+      fullBtn.type = "button";
+      fullBtn.className = "btn btn-full";
+      fullBtn.textContent = "Full";
+      fullBtn.setAttribute("aria-label", "Ate a full container of " + item.flavor);
+      fullBtn.addEventListener("click", function () { eatFull(item.id); });
+      actions.appendChild(fullBtn);
+    }
 
     var halfBtn = document.createElement("button");
     halfBtn.type = "button";
@@ -206,8 +220,6 @@
     halfBtn.textContent = "Half";
     halfBtn.setAttribute("aria-label", "Ate half a container of " + item.flavor);
     halfBtn.addEventListener("click", function () { eatHalf(item.id); });
-
-    actions.appendChild(fullBtn);
     actions.appendChild(halfBtn);
 
     li.appendChild(tub);
@@ -245,10 +257,12 @@
       head.type = "button";
       head.className = "summary-head";
       head.setAttribute("aria-expanded", expanded[g.flavor.toLowerCase()] ? "true" : "false");
+      head.setAttribute("aria-label", g.items.length + " " + g.flavor);
 
       var count = document.createElement("span");
       count.className = "summary-count";
-      count.textContent = g.items.length;
+      count.setAttribute("aria-hidden", "true");
+      count.innerHTML = countTubSVG(g.items.length);
 
       var flavor = document.createElement("span");
       flavor.className = "summary-flavor";
@@ -366,17 +380,41 @@
     );
   }
 
+  // Delete up to `n` rows from the empties table (used when new tubs are made
+  // to draw down the empty-container tally).
+  function decrementEmptiesRemote(n) {
+    if (n <= 0) return Promise.resolve({ error: null });
+    return db.from("empties").select("id").limit(n).then(function (res) {
+      if (res.error) return { error: res.error };
+      var ids = (res.data || []).map(function (r) { return r.id; });
+      if (ids.length === 0) return { error: null };
+      return db.from("empties").delete().in("id", ids);
+    });
+  }
+
   function addContainers(flavor, qty, dateISO) {
     var rows = [];
     for (var i = 0; i < qty; i++) {
       rows.push({ flavor: flavor, state: "full", date_made: dateISO });
     }
+    // Making new tubs uses up empty containers: draw the tally down by the
+    // number added, but never below zero.
+    var dec = Math.min(qty, emptiesCount);
     mutate(
-      function () { return db.from("containers").insert(rows); },
+      function () {
+        return Promise.all([
+          db.from("containers").insert(rows),
+          decrementEmptiesRemote(dec)
+        ]).then(function (results) {
+          var bad = results.filter(function (r) { return r && r.error; })[0];
+          return { error: bad ? bad.error : null };
+        });
+      },
       function () {
         rows.forEach(function (r) {
           inventory.push({ id: makeId(), flavor: r.flavor, state: r.state, date_made: r.date_made });
         });
+        emptiesCount = Math.max(0, emptiesCount - dec);
       }
     );
   }

@@ -1,15 +1,16 @@
 :root {
-  --bg: #f5f0fb;
+  --bg: #fdfbfe;
   --card: #ffffff;
   --ink: #3b2a52;
   --muted: #9385a8;
-  --line: #e7ddf3;
+  --line: #ece4f5;
   --accent: #b79ce0;
   --accent-ink: #5b3b8c;
   --accent-strong: #7c4dcc;
+  --pink: #f0a6c0;
   --full: #a78bda;
   --half: #ede6f8;
-  --shadow: 0 1px 3px rgba(91, 59, 140, 0.12);
+  --shadow: 0 1px 3px rgba(91, 59, 140, 0.10);
 }
 
 * { box-sizing: border-box; }
@@ -39,26 +40,11 @@ html, body {
   padding: 8px 4px 14px;
 }
 
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-}
 .brand-logo {
-  flex: 0 0 auto;
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-}
-.app-title {
-  margin: 0;
-  font-size: 26px;
-  font-weight: 800;
-  letter-spacing: -0.5px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  flex: 0 1 auto;
+  height: 58px;
+  width: auto;
+  max-width: calc(100% - 60px);
 }
 
 .add-btn {
@@ -270,16 +256,25 @@ html, body {
 }
 .summary-count {
   flex: 0 0 auto;
-  min-width: 30px;
-  height: 30px;
-  padding: 0 8px;
-  border-radius: 999px;
-  background: var(--accent-strong);
-  color: #fff;
-  font-weight: 700;
-  font-size: 15px;
-  display: grid;
-  place-items: center;
+  width: 34px;
+  height: 36px;
+  color: var(--accent-ink);
+}
+.count-tub-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.count-tub-svg .lid,
+.count-tub-svg .body {
+  fill: none;
+  stroke: var(--accent-ink);
+  stroke-width: 1.6;
+}
+.count-tub-svg .count-num {
+  fill: var(--accent-ink);
+  font-size: 9px;
+  font-weight: 800;
 }
 .summary-flavor {
   flex: 1 1 auto;
