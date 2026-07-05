@@ -319,15 +319,21 @@
       dates.className = "summary-dates";
       g.items.forEach(function (item) {
         var d = document.createElement("li");
-        var badge = document.createElement("span");
-        badge.className = "date-badge";
-        badge.textContent = shortDate(item.date_made);
+        var dateEdit = document.createElement("input");
+        dateEdit.type = "date";
+        dateEdit.className = "date-edit";
+        dateEdit.value = String(item.date_made || "").slice(0, 10);
+        dateEdit.setAttribute("aria-label", "Date made for this " + g.flavor + " container");
+        dateEdit.addEventListener("change", function () {
+          updateContainerDate(item.id, dateEdit.value);
+        });
         var lbl = document.createElement("span");
+        lbl.className = "date-flavor";
         lbl.textContent = g.flavor;
         var st = document.createElement("span");
         st.className = "date-state";
         st.textContent = item.state === "half" ? "½ tub" : "full";
-        d.appendChild(badge); d.appendChild(lbl); d.appendChild(st);
+        d.appendChild(dateEdit); d.appendChild(lbl); d.appendChild(st);
         dates.appendChild(d);
       });
 
@@ -578,6 +584,16 @@
     } else {
       finishContainer(id);
     }
+  }
+
+  // Edit the "date made" of a specific container from the Inventory page.
+  function updateContainerDate(id, dateISO) {
+    var item = findById(id);
+    if (!item || !dateISO || item.date_made === dateISO) return;
+    mutate(
+      function () { return db.from("containers").update({ date_made: dateISO }).eq("id", id); },
+      function () { item.date_made = dateISO; }
+    );
   }
 
   function resetEmpties() {

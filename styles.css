@@ -306,14 +306,22 @@ html, body {
   border-top: 1px solid var(--line);
   font-size: 15px;
 }
-.date-badge {
-  font-size: 12px;
+.date-edit {
+  font-size: 13px;
   font-weight: 700;
   color: var(--accent-ink);
   background: var(--half);
-  border-radius: 6px;
-  padding: 2px 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 5px 8px;
+  font-family: inherit;
+  min-height: 32px;
 }
+.date-edit:focus {
+  outline: none;
+  border-color: var(--accent-strong);
+}
+.date-flavor { min-width: 0; }
 .date-state {
   margin-left: auto;
   font-size: 12px;
