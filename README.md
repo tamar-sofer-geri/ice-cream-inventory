@@ -10,8 +10,10 @@ Each row is one physical container of a flavor, shown as **full** or **half**. T
 
 There are two pages, switched via the bottom tab bar:
 
-- **Containers** — every container, sorted alphabetically so the same flavors group together. Each shows a full/½ icon and its date.
-- **Inventory** — a count per flavor (e.g. "3 Vanilla"). Tap a flavor to expand it and see the date each container was made.
+- **Containers** — every container, sorted alphabetically so the same flavors group together. Each shows a tub icon (filled = full, outline with ½ = half) and its date.
+- **Inventory** — a running tally of **empty containers** at the top, plus a count per flavor (e.g. "3 Vanilla"). Tap a flavor to expand it and see the date each container was made.
+
+Whenever a container is finished (the **Full** button, or **Half** on a container that was already half), the empty-container tally goes up by one. **Reset** zeroes it (e.g. after you recycle the empties).
 
 Changes made on one device appear on the others automatically (real-time). A `localStorage` copy is kept as an offline cache so the app still paints instantly if the network is momentarily unavailable.
 
@@ -52,6 +54,20 @@ create policy "public insert" on public.containers for insert with check (true);
 create policy "public update" on public.containers for update using (true) with check (true);
 create policy "public delete" on public.containers for delete using (true);
 alter publication supabase_realtime add table public.containers;
+```
+
+Plus a `public.empties` table (one row per finished container; the tally is its row count):
+
+```sql
+create table if not exists public.empties (
+  id uuid primary key default gen_random_uuid(),
+  emptied_at timestamptz not null default now()
+);
+alter table public.empties enable row level security;
+create policy "public read"   on public.empties for select using (true);
+create policy "public insert" on public.empties for insert with check (true);
+create policy "public delete" on public.empties for delete using (true);
+alter publication supabase_realtime add table public.empties;
 ```
 
 > Access is currently **open** (anyone with the app can read/write). To lock it down later, tighten these policies or add Supabase Auth.
