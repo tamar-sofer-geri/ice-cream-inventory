@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#3b82c4" />
+  <meta name="theme-color" content="#7c4dcc" />
   <!-- Add-to-home-screen support -->
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -38,6 +38,11 @@
 
       <!-- Inventory (counts) view -->
       <section id="view-inventory" class="view" aria-label="Inventory" hidden>
+        <div class="empties-card">
+          <span class="empties-num" id="empties-num">0</span>
+          <span class="empties-label">Empty containers</span>
+          <button id="empties-reset" class="empties-reset" type="button">Reset</button>
+        </div>
         <ul id="summary-list" class="summary-list" aria-live="polite"></ul>
         <p id="summary-empty" class="empty-state" hidden>Nothing in stock yet.</p>
       </section>

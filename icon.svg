@@ -1,12 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Ice cream">
-  <rect width="512" height="512" rx="112" fill="#eaf2fd"/>
-  <!-- scoops -->
-  <circle cx="256" cy="176" r="86" fill="#3b82c4"/>
-  <circle cx="206" cy="212" r="70" fill="#7db6e8"/>
-  <circle cx="306" cy="212" r="70" fill="#a5c8f0"/>
+  <rect width="512" height="512" rx="112" fill="#efe7fb"/>
+  <!-- scoops (multi-colored) -->
+  <circle cx="256" cy="176" r="86" fill="#f28ab2"/>   <!-- strawberry -->
+  <circle cx="206" cy="212" r="70" fill="#f6c85f"/>   <!-- mango -->
+  <circle cx="306" cy="212" r="70" fill="#7cd0b0"/>   <!-- mint -->
   <!-- cone -->
   <path d="M168 250 h176 L256 430 Z" fill="#e6b877"/>
   <path d="M198 300 h116 M214 340 h84 M232 380 h40" stroke="#c9954f" stroke-width="10" stroke-linecap="round"/>
   <!-- cherry -->
-  <circle cx="256" cy="96" r="20" fill="#1e4e79"/>
+  <circle cx="256" cy="96" r="20" fill="#e0466f"/>
 </svg>

@@ -33,8 +33,11 @@
   var qtyInput = document.getElementById("qty-input");
   var dateInput = document.getElementById("date-input");
   var suggestions = document.getElementById("flavor-suggestions");
+  var emptiesNumEl = document.getElementById("empties-num");
+  var emptiesResetEl = document.getElementById("empties-reset");
 
-  var inventory = loadCache(); // in-memory mirror of the containers table
+  var emptiesCount = 0; // running tally of finished/empty containers
+  var inventory = loadCache(); // in-memory mirror of the containers table (also sets emptiesCount)
   var currentView = "containers";
   var expanded = {}; // flavor -> bool, remembers open rows in the inventory view
 
@@ -59,6 +62,16 @@
     return "c" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   }
 
+  // Ice-cream tub icon. Fill vs. outline (and the ½) are controlled by CSS
+  // via the parent .tub[data-state] element.
+  function tubSVG() {
+    return '<svg class="tub-svg" viewBox="0 0 24 26">' +
+      '<path class="lid" d="M2.6 3.2 h18.8 a2.4 2.4 0 0 1 0 4.8 h-18.8 a2.4 2.4 0 0 1 0 -4.8 z"/>' +
+      '<path class="body" d="M3.6 7.6 h16.8 l-1.9 15.1 a1.4 1.4 0 0 1 -1.4 1.2 h-10.2 a1.4 1.4 0 0 1 -1.4 -1.2 z"/>' +
+      '<text class="tub-frac" x="12" y="18.5" text-anchor="middle">½</text>' +
+      '</svg>';
+  }
+
   function byFlavorThenDate(a, b) {
     var f = a.flavor.toLowerCase().localeCompare(b.flavor.toLowerCase());
     if (f !== 0) return f;
@@ -76,8 +89,13 @@
   function loadCache() {
     try {
       var raw = window.localStorage.getItem(CACHE_KEY);
-      var parsed = raw ? JSON.parse(raw) : [];
-      return Array.isArray(parsed) ? parsed : [];
+      var parsed = raw ? JSON.parse(raw) : null;
+      if (parsed && Array.isArray(parsed.containers)) {
+        emptiesCount = parsed.empties || 0;
+        return parsed.containers;
+      }
+      if (Array.isArray(parsed)) return parsed; // legacy array format
+      return [];
     } catch (e) {
       return [];
     }
@@ -85,7 +103,10 @@
 
   function saveCache() {
     try {
-      window.localStorage.setItem(CACHE_KEY, JSON.stringify(inventory));
+      window.localStorage.setItem(
+        CACHE_KEY,
+        JSON.stringify({ containers: inventory, empties: emptiesCount })
+      );
     } catch (e) { /* ignore */ }
   }
 
@@ -93,12 +114,16 @@
 
   function fetchAll() {
     if (!usingSupabase) { render(); return Promise.resolve(); }
-    return db
-      .from("containers")
-      .select("id, flavor, state, date_made")
+    return Promise.all([
+      db.from("containers").select("id, flavor, state, date_made"),
+      db.from("empties").select("*", { count: "exact", head: true })
+    ])
       .then(function (res) {
-        if (res.error) throw res.error;
-        inventory = res.data || [];
+        var cRes = res[0], eRes = res[1];
+        if (cRes.error) throw cRes.error;
+        inventory = cRes.data || [];
+        // empties table may not exist yet; only update when the read succeeds
+        if (!eRes.error && typeof eRes.count === "number") emptiesCount = eRes.count;
         saveCache();
         showNote("");
         render();
@@ -134,6 +159,7 @@
     var sorted = inventory.slice().sort(byFlavorThenDate);
     renderContainers(sorted);
     renderInventory(sorted);
+    emptiesNumEl.textContent = emptiesCount;
     refreshSuggestions();
   }
 
@@ -154,15 +180,7 @@
     tub.className = "tub";
     tub.dataset.state = item.state;
     tub.setAttribute("aria-hidden", "true");
-    var fill = document.createElement("span");
-    fill.className = "fill";
-    tub.appendChild(fill);
-    if (item.state === "half") {
-      var label = document.createElement("span");
-      label.className = "label";
-      label.textContent = "½";
-      tub.appendChild(label);
-    }
+    tub.innerHTML = tubSVG();
 
     var name = document.createElement("span");
     name.className = "row-flavor";
@@ -304,14 +322,28 @@
     inventory = inventory.filter(function (it) { return it.id !== id; });
   }
 
-  function eatFull(id) {
-    if (!findById(id)) return;
+  // A container is "finished" when it's fully eaten: remove it and add one
+  // to the empty-container tally.
+  function finishContainer(id) {
     animateRemoval(id, function () {
       mutate(
-        function () { return db.from("containers").delete().eq("id", id); },
-        function () { removeLocal(id); }
+        function () {
+          return Promise.all([
+            db.from("containers").delete().eq("id", id),
+            db.from("empties").insert({})
+          ]).then(function (results) {
+            var bad = results.filter(function (r) { return r && r.error; })[0];
+            return { error: bad ? bad.error : null };
+          });
+        },
+        function () { removeLocal(id); emptiesCount++; }
       );
     });
+  }
+
+  function eatFull(id) {
+    if (!findById(id)) return;
+    finishContainer(id);
   }
 
   function eatHalf(id) {
@@ -323,13 +355,15 @@
         function () { item.state = "half"; }
       );
     } else {
-      animateRemoval(id, function () {
-        mutate(
-          function () { return db.from("containers").delete().eq("id", id); },
-          function () { removeLocal(id); }
-        );
-      });
+      finishContainer(id);
     }
+  }
+
+  function resetEmpties() {
+    mutate(
+      function () { return db.from("empties").delete().not("id", "is", null); },
+      function () { emptiesCount = 0; }
+    );
   }
 
   function addContainers(flavor, qty, dateISO) {
@@ -380,6 +414,11 @@
     t.addEventListener("click", function () { switchView(t.dataset.view); });
   });
 
+  emptiesResetEl.addEventListener("click", function () {
+    if (emptiesCount === 0) return;
+    if (window.confirm("Reset the empty-container count to zero?")) resetEmpties();
+  });
+
   /* ---------- add modal ---------- */
 
   function openModal() {
@@ -412,8 +451,11 @@
   /* ---------- realtime + boot ---------- */
 
   if (usingSupabase) {
-    db.channel("containers-changes")
+    db.channel("glideria-changes")
       .on("postgres_changes", { event: "*", schema: "public", table: "containers" }, function () {
+        fetchAll();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "empties" }, function () {
         fetchAll();
       })
       .subscribe();
