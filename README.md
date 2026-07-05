@@ -1,14 +1,19 @@
-# 🍦 Ice Cream Inventory
+# 🍨 Geri's Glideria
 
-A tiny mobile-friendly web app to track your ice cream inventory — one screen, no accounts, no backend.
+A mobile-friendly web app to track an ice cream inventory, **synced across devices and people** in real time via a shared [Supabase](https://supabase.com) database. No build step — plain HTML/CSS/JavaScript hosted on GitHub Pages.
 
 Each row is one physical container of a flavor, shown as **full** or **half**. Tap a button when you eat some:
 
-- **Full** — you finished a whole container → the row is removed.
+- **Full** — you finished a whole container → it's removed.
 - **Half** — you ate half → a **full** container becomes **half**; a **half** container is finished and removed.
-- **➕** — add a new full container of any flavor.
+- **➕** — add containers: pick a flavor, **how many** to add at once, and the **date made** (defaults to today, editable).
 
-The container icon on the left reflects the current fill (full or ½). Your inventory is saved on the device using the browser's `localStorage`, so it survives reloads.
+There are two pages, switched via the bottom tab bar:
+
+- **Containers** — every container, sorted alphabetically so the same flavors group together. Each shows a full/½ icon and its date.
+- **Inventory** — a count per flavor (e.g. "3 Vanilla"). Tap a flavor to expand it and see the date each container was made.
+
+Changes made on one device appear on the others automatically (real-time). A `localStorage` copy is kept as an offline cache so the app still paints instantly if the network is momentarily unavailable.
 
 ## Live app
 
@@ -16,25 +21,55 @@ The container icon on the left reflects the current fill (full or ½). Your inve
 
 On your phone, open the link and use your browser's **Add to Home Screen** to install it like an app.
 
-## Run locally
+## Configuration
 
-It's plain HTML/CSS/JavaScript — no build step. From this folder:
+Backend connection lives in `config.js`:
+
+```js
+window.GLIDERIA_CONFIG = {
+  supabaseUrl: "https://<project>.supabase.co",
+  supabaseAnonKey: "<anon public key>"
+};
+```
+
+Both values are safe to commit — the `anon` key is a public client key, and access is governed by the table's Row Level Security policies. If these are left blank, the app runs in **local-only mode** (device-only, no sync).
+
+### Database schema
+
+The Supabase project has one table, `public.containers`, created with:
+
+```sql
+create table if not exists public.containers (
+  id uuid primary key default gen_random_uuid(),
+  flavor text not null,
+  state text not null default 'full' check (state in ('full','half')),
+  date_made date not null default current_date,
+  created_at timestamptz not null default now()
+);
+alter table public.containers enable row level security;
+create policy "public read"   on public.containers for select using (true);
+create policy "public insert" on public.containers for insert with check (true);
+create policy "public update" on public.containers for update using (true) with check (true);
+create policy "public delete" on public.containers for delete using (true);
+alter publication supabase_realtime add table public.containers;
+```
+
+> Access is currently **open** (anyone with the app can read/write). To lock it down later, tighten these policies or add Supabase Auth.
+
+## Run locally
 
 ```bash
 python3 -m http.server 8000
 ```
 
-Then open <http://localhost:8000> in your browser. (Opening `index.html` directly works too, but serving it avoids any browser file-URL restrictions.)
+Then open <http://localhost:8000>. It talks to the same Supabase project, so local changes sync too.
 
 ## Files
 
 | File | Purpose |
 | --- | --- |
-| `index.html` | Screen structure and the add-container modal |
-| `styles.css` | Mobile-first styling |
-| `app.js` | Inventory state, persistence, and button actions |
+| `index.html` | Header, two views, bottom tab bar, add-container modal |
+| `styles.css` | Blue theme, mobile-first styling |
+| `app.js` | Supabase data access, real-time sync, rendering, actions |
+| `config.js` | Supabase URL + anon key |
 | `manifest.webmanifest`, `icon.svg`, `apple-touch-icon.png` | Home-screen install support |
-
-## Notes
-
-- Inventory is stored **per device/browser** — it does not sync across devices (that would need a backend, a possible future addition).

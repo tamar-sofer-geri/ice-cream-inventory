@@ -10,6 +10,6 @@
  * Leave them blank to run in local-only mode (no cross-device sync).
  */
 window.GLIDERIA_CONFIG = {
-  supabaseUrl: "",
-  supabaseAnonKey: ""
+  supabaseUrl: "https://yyolpujtmlwmvfetbnld.supabase.co",
+  supabaseAnonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl5b2xwdWp0bWx3bXZmZXRibmxkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMzNjg4NjQsImV4cCI6MjA5ODk0NDg2NH0.oMPDHZlT4xxP2IuwniHu2HUNNtsi6QO5n9_i3wDJX84"
 };
