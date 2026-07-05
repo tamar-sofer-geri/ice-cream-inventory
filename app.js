@@ -766,6 +766,12 @@
     analyticsFlavor = flavorFilterEl.value; renderAnalytics();
   });
 
+  var stockBtn = document.getElementById("stock-btn");
+  if (stockBtn) stockBtn.addEventListener("click", function () {
+    switchView("containers");
+    window.scrollTo(0, 0);
+  });
+
   /* ---------- add modal ---------- */
 
   function openModal() {

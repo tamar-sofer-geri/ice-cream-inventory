@@ -59,7 +59,7 @@
 
         <div class="stat-grid">
           <div class="stat"><span class="stat-num" id="stat-total">0</span><span class="stat-label">consumed (shown)</span></div>
-          <div class="stat"><span class="stat-num" id="stat-stock">0</span><span class="stat-label">in stock now</span></div>
+          <button class="stat stat-btn" type="button" id="stock-btn" aria-label="Go to Flavors"><span class="stat-num" id="stat-stock">0</span><span class="stat-label">in stock now ›</span></button>
           <div class="stat"><span class="stat-num" id="stat-top">—</span><span class="stat-label">top flavor</span></div>
         </div>
 
@@ -90,7 +90,7 @@
   <nav class="tabbar" aria-label="Views">
     <button class="tab is-active" type="button" data-view="containers" aria-current="page">
       <span class="tab-icon" aria-hidden="true">🍨</span>
-      <span>Containers</span>
+      <span>Flavors</span>
     </button>
     <button class="tab" type="button" data-view="inventory">
       <span class="tab-icon" aria-hidden="true">📋</span>

@@ -401,6 +401,12 @@ html, body {
   text-align: center;
   box-shadow: var(--shadow);
 }
+.stat-btn {
+  font: inherit;
+  cursor: pointer;
+  border-color: var(--accent);
+}
+.stat-btn:active { transform: scale(0.97); }
 .stat-num {
   display: block;
   font-size: 24px;
