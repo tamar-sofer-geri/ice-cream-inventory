@@ -8,10 +8,13 @@ Each row is one physical container of a flavor, shown as **full** or **half**. T
 - **Half** — you ate half → a **full** container becomes **half**; a **half** container is finished and removed.
 - **➕** — add containers: pick a flavor, **how many** to add at once, and the **date made** (defaults to today, editable).
 
-There are two pages, switched via the bottom tab bar:
+There are three pages, switched via the bottom tab bar:
 
 - **Containers** — every container, sorted alphabetically so the same flavors group together. Each shows a tub icon (filled = full, outline with ½ = half) and its date.
-- **Inventory** — a running tally of **empty containers** at the top, plus a count per flavor (e.g. "3 Vanilla"). Tap a flavor to expand it and see the date each container was made.
+- **Inventory** — a running tally of **empty containers** at the top, plus a count per flavor (shown as a tub with the number inside). Tap a flavor to expand it and see the date each container was made.
+- **Analytics** — consumption over time (Week / Month / Year, filterable by flavor), an all-time by-flavor breakdown, average wait time per flavor (made → eaten), and which tubs have been sitting longest right now.
+
+After tapping **Full** or **Half**, a brief **Undo** bar appears at the bottom (~2.5s) to reverse an accidental tap.
 
 Whenever a container is finished (the **Full** button, or **Half** on a container that was already half), the empty-container tally goes up by one. Adding new tubs draws the tally back **down** by however many you add (it never goes below zero), on the assumption you refilled empties. **Reset** zeroes it manually.
 
@@ -70,6 +73,22 @@ create policy "public read"   on public.empties for select using (true);
 create policy "public insert" on public.empties for insert with check (true);
 create policy "public delete" on public.empties for delete using (true);
 alter publication supabase_realtime add table public.empties;
+```
+
+And a `public.consumptions` table (immutable history powering the Analytics page — one row per finished tub):
+
+```sql
+create table if not exists public.consumptions (
+  id uuid primary key default gen_random_uuid(),
+  flavor text not null,
+  date_made date,
+  consumed_at timestamptz not null default now()
+);
+alter table public.consumptions enable row level security;
+create policy "public read"   on public.consumptions for select using (true);
+create policy "public insert" on public.consumptions for insert with check (true);
+create policy "public delete" on public.consumptions for delete using (true);
+alter publication supabase_realtime add table public.consumptions;
 ```
 
 > Access is currently **open** (anyone with the app can read/write). To lock it down later, tighten these policies or add Supabase Auth.

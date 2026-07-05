@@ -43,7 +43,47 @@
         <ul id="summary-list" class="summary-list" aria-live="polite"></ul>
         <p id="summary-empty" class="empty-state" hidden>Nothing in stock yet.</p>
       </section>
+
+      <!-- Analytics view -->
+      <section id="view-analytics" class="view" aria-label="Analytics" hidden>
+        <div class="analytics-controls">
+          <div class="seg" id="period-seg" role="group" aria-label="Time period">
+            <button class="seg-btn is-active" type="button" data-period="week">Week</button>
+            <button class="seg-btn" type="button" data-period="month">Month</button>
+            <button class="seg-btn" type="button" data-period="year">Year</button>
+          </div>
+          <select id="flavor-filter" class="flavor-filter" aria-label="Filter by flavor">
+            <option value="all">All flavors</option>
+          </select>
+        </div>
+
+        <div class="stat-grid">
+          <div class="stat"><span class="stat-num" id="stat-total">0</span><span class="stat-label">consumed (shown)</span></div>
+          <div class="stat"><span class="stat-num" id="stat-stock">0</span><span class="stat-label">in stock now</span></div>
+          <div class="stat"><span class="stat-num" id="stat-top">—</span><span class="stat-label">top flavor</span></div>
+        </div>
+
+        <h3 class="analytics-h">Consumed per <span id="period-word">week</span></h3>
+        <div id="consumption-chart" class="chart" aria-label="Consumption over time"></div>
+
+        <h3 class="analytics-h">By flavor (all-time)</h3>
+        <ul id="flavor-breakdown" class="bar-list"></ul>
+
+        <h3 class="analytics-h">Average wait by flavor</h3>
+        <ul id="wait-list" class="stat-list"></ul>
+
+        <h3 class="analytics-h">Sitting longest right now</h3>
+        <ul id="sitting-list" class="stat-list"></ul>
+
+        <p id="analytics-empty" class="empty-state" hidden>No data yet. Add tubs and finish some to see analytics.</p>
+      </section>
     </main>
+  </div>
+
+  <!-- Undo bar (appears briefly after a Half/Full tap) -->
+  <div id="undo-bar" class="undo-bar" hidden>
+    <span id="undo-label">Undone</span>
+    <button id="undo-btn" class="undo-btn" type="button">Undo</button>
   </div>
 
   <!-- Bottom tab navigation -->
@@ -55,6 +95,10 @@
     <button class="tab" type="button" data-view="inventory">
       <span class="tab-icon" aria-hidden="true">📋</span>
       <span>Inventory</span>
+    </button>
+    <button class="tab" type="button" data-view="analytics">
+      <span class="tab-icon" aria-hidden="true">📊</span>
+      <span>Analytics</span>
     </button>
   </nav>
 
