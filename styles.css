@@ -541,6 +541,8 @@ html, body {
   font-weight: 600;
 }
 .tab-icon { font-size: 20px; line-height: 1; filter: grayscale(0.4); opacity: 0.6; }
+.tab-icon .tab-tub { display: block; width: 22px; height: 22px; filter: none; }
+.tab.is-active .tab-tub { color: var(--accent-strong); }
 .tab.is-active { color: var(--accent-strong); }
 .tab.is-active .tab-icon { filter: none; opacity: 1; }
 
