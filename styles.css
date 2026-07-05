@@ -321,7 +321,24 @@ html, body {
   outline: none;
   border-color: var(--accent-strong);
 }
-.date-flavor { min-width: 0; }
+.flavor-edit {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-family: inherit;
+  min-height: 32px;
+}
+.flavor-edit:focus {
+  outline: none;
+  border-color: var(--accent-strong);
+  background: #fff;
+}
 .date-state {
   margin-left: auto;
   font-size: 12px;

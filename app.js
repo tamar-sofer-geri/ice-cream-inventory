@@ -327,13 +327,21 @@
         dateEdit.addEventListener("change", function () {
           updateContainerDate(item.id, dateEdit.value);
         });
-        var lbl = document.createElement("span");
-        lbl.className = "date-flavor";
-        lbl.textContent = g.flavor;
+        var flavorEdit = document.createElement("input");
+        flavorEdit.type = "text";
+        flavorEdit.className = "flavor-edit";
+        flavorEdit.value = g.flavor;
+        flavorEdit.setAttribute("aria-label", "Flavor name for this container");
+        flavorEdit.addEventListener("change", function () {
+          updateContainerFlavor(item.id, flavorEdit.value);
+        });
+        flavorEdit.addEventListener("keydown", function (e) {
+          if (e.key === "Enter") { e.preventDefault(); flavorEdit.blur(); }
+        });
         var st = document.createElement("span");
         st.className = "date-state";
         st.textContent = item.state === "half" ? "½ tub" : "full";
-        d.appendChild(dateEdit); d.appendChild(lbl); d.appendChild(st);
+        d.appendChild(dateEdit); d.appendChild(flavorEdit); d.appendChild(st);
         dates.appendChild(d);
       });
 
@@ -593,6 +601,17 @@
     mutate(
       function () { return db.from("containers").update({ date_made: dateISO }).eq("id", id); },
       function () { item.date_made = dateISO; }
+    );
+  }
+
+  // Rename a specific container's flavor from the Inventory page.
+  function updateContainerFlavor(id, flavor) {
+    var item = findById(id);
+    var name = (flavor || "").trim();
+    if (!item || !name || item.flavor === name) { render(); return; }
+    mutate(
+      function () { return db.from("containers").update({ flavor: name }).eq("id", id); },
+      function () { item.flavor = name; }
     );
   }
 
