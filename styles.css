@@ -98,14 +98,35 @@ html, body {
   box-shadow: var(--shadow);
 }
 
-.row-flavor {
+.row-main {
   flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.row-flavor {
   min-width: 0;
   font-size: 17px;
   font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+.row-note {
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.row.tub-focus {
+  border-color: var(--accent-strong);
+  animation: tubfocus 1.2s ease-in-out 0s 5;
+}
+@keyframes tubfocus {
+  0%, 100% { box-shadow: 0 0 0 2px var(--accent); }
+  50% { box-shadow: 0 0 0 4px var(--accent-strong); }
 }
 .row-date {
   font-size: 12px;
@@ -303,12 +324,30 @@ html, body {
 .summary-item:not(.open) .summary-dates { display: none; }
 .summary-dates li {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  flex-direction: column;
+  gap: 6px;
   padding: 8px 0;
   border-top: 1px solid var(--line);
   font-size: 15px;
 }
+.sd-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.note-edit {
+  width: 100%;
+  font-size: 13px;
+  color: var(--ink);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-family: inherit;
+  min-height: 30px;
+}
+.note-edit::placeholder { color: var(--muted); }
+.note-edit:focus { outline: none; border-color: var(--accent-strong); background: #fff; }
 .date-edit {
   font-size: 13px;
   font-weight: 700;
@@ -585,6 +624,20 @@ html, body {
   color: var(--ink);
 }
 .modal-card input:focus { border-color: var(--accent-strong); }
+.modal-card textarea {
+  width: 100%;
+  margin-top: 6px;
+  padding: 12px;
+  font-size: 16px;
+  font-family: inherit;
+  border: 1.5px solid var(--line);
+  border-radius: 10px;
+  outline: none;
+  background: #fff;
+  color: var(--ink);
+  resize: vertical;
+}
+.modal-card textarea:focus { border-color: var(--accent-strong); }
 
 .field-row {
   display: flex;

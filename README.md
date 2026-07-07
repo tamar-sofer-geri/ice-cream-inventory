@@ -6,7 +6,9 @@ Each row is one physical container of a flavor, shown as **full** or **half**. T
 
 - **Full** — you finished a whole container → it's removed.
 - **Half** — you ate half → a **full** container becomes **half**; a **half** container is finished and removed.
-- **➕** — add containers: pick a flavor, **how many** to add at once, and the **date made** (defaults to today, editable).
+- **➕** — add containers: pick a flavor, **how many** to add at once, the **date made** (defaults to today, editable), and optional **notes** (e.g. recipe tweaks).
+
+Dates, flavors, and notes for each container can be edited later from the **Inventory** page (expand a flavor). Opening the app with a `?tub=<container-id>` link (e.g. from a scanned QR label) jumps to the **Flavors** page and highlights that exact container, ready to mark Full/Half.
 
 There are three pages, switched via the bottom tab bar:
 
@@ -51,6 +53,7 @@ create table if not exists public.containers (
   flavor text not null,
   state text not null default 'full' check (state in ('full','half')),
   date_made date not null default current_date,
+  notes text,
   created_at timestamptz not null default now()
 );
 alter table public.containers enable row level security;

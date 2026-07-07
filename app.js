@@ -31,6 +31,7 @@
   var flavorInput = document.getElementById("flavor-input");
   var qtyInput = document.getElementById("qty-input");
   var dateInput = document.getElementById("date-input");
+  var notesInput = document.getElementById("notes-input");
   var suggestions = document.getElementById("flavor-suggestions");
   var emptiesNumEl = document.getElementById("empties-num");
   var emptiesResetEl = document.getElementById("empties-reset");
@@ -61,6 +62,10 @@
   var analyticsFlavor = "all";
   var pendingUndo = null;
   var undoTimer = null;
+  // Deep link: /?tub=<id> opens the Flavors view focused on that container.
+  var deepLinkTub = null;
+  try { deepLinkTub = new URLSearchParams(location.search).get("tub"); } catch (e) {}
+  var deepLinkHandled = false;
 
   /* ---------- helpers ---------- */
 
@@ -144,9 +149,9 @@
   /* ---------- data access ---------- */
 
   function fetchAll() {
-    if (!usingSupabase) { render(); return Promise.resolve(); }
+    if (!usingSupabase) { render(); maybeHandleDeepLink(); return Promise.resolve(); }
     return Promise.all([
-      db.from("containers").select("id, flavor, state, date_made"),
+      db.from("containers").select("*"),
       db.from("empties").select("*", { count: "exact", head: true }),
       db.from("consumptions").select("flavor, date_made, consumed_at")
     ]).then(function (res) {
@@ -162,6 +167,7 @@
       saveCache();
       showNote("");
       render();
+      maybeHandleDeepLink();
     }).catch(function (err) {
       console.error("fetch failed", err);
       showNote("Offline — showing last synced data.");
@@ -221,6 +227,7 @@
     listEl.innerHTML = "";
     emptyEl.hidden = sorted.length > 0;
     sorted.forEach(function (item) { listEl.appendChild(buildRow(item)); });
+    applyFocusClass(false); // keep a deep-link highlight through re-renders
   }
 
   function buildRow(item) {
@@ -234,6 +241,8 @@
     tub.setAttribute("aria-hidden", "true");
     tub.innerHTML = tubSVG();
 
+    var main = document.createElement("span");
+    main.className = "row-main";
     var name = document.createElement("span");
     name.className = "row-flavor";
     name.textContent = item.flavor;
@@ -241,6 +250,14 @@
     date.className = "row-date";
     date.textContent = shortDate(item.date_made);
     name.appendChild(date);
+    main.appendChild(name);
+    if (item.notes) {
+      var note = document.createElement("span");
+      note.className = "row-note";
+      note.textContent = item.notes;
+      note.title = item.notes;
+      main.appendChild(note);
+    }
 
     var actions = document.createElement("span");
     actions.className = "row-actions";
@@ -264,7 +281,7 @@
     actions.appendChild(halfBtn);
 
     li.appendChild(tub);
-    li.appendChild(name);
+    li.appendChild(main);
     li.appendChild(actions);
     return li;
   }
@@ -371,7 +388,23 @@
         var st = document.createElement("span");
         st.className = "date-state";
         st.textContent = item.state === "half" ? "half" : "full";
-        d.appendChild(dateEdit); d.appendChild(flavorEdit); d.appendChild(st);
+
+        var top = document.createElement("div");
+        top.className = "sd-top";
+        top.appendChild(dateEdit); top.appendChild(flavorEdit); top.appendChild(st);
+
+        var noteEdit = document.createElement("input");
+        noteEdit.type = "text";
+        noteEdit.className = "note-edit";
+        noteEdit.value = item.notes || "";
+        noteEdit.placeholder = "Notes";
+        noteEdit.setAttribute("aria-label", "Notes for this container");
+        noteEdit.addEventListener("change", function () {
+          updateContainerNotes(item.id, noteEdit.value);
+        });
+
+        d.appendChild(top);
+        d.appendChild(noteEdit);
         dates.appendChild(d);
       });
 
@@ -575,7 +608,7 @@
   function finishContainer(id) {
     var item = findById(id);
     if (!item) return;
-    var snap = { flavor: item.flavor, date_made: item.date_made, state: item.state };
+    var snap = { flavor: item.flavor, date_made: item.date_made, state: item.state, notes: item.notes || null };
     animateRemoval(id, function () {
       removeLocal(id);
       emptiesCount++;
@@ -652,9 +685,11 @@
     );
   }
 
-  function addContainers(flavor, qty, dateISO) {
+  function addContainers(flavor, qty, dateISO, notes) {
     var rows = [];
-    for (var i = 0; i < qty; i++) rows.push({ flavor: flavor, state: "full", date_made: dateISO });
+    for (var i = 0; i < qty; i++) {
+      rows.push({ flavor: flavor, state: "full", date_made: dateISO, notes: notes || null });
+    }
     var dec = Math.min(qty, emptiesCount);
     mutate(
       function () {
@@ -668,11 +703,57 @@
       },
       function () {
         rows.forEach(function (r) {
-          inventory.push({ id: makeId(), flavor: r.flavor, state: r.state, date_made: r.date_made });
+          inventory.push({ id: makeId(), flavor: r.flavor, state: r.state, date_made: r.date_made, notes: r.notes });
         });
         emptiesCount = Math.max(0, emptiesCount - dec);
       }
     );
+  }
+
+  // Edit the notes of a specific container from the Inventory page.
+  function updateContainerNotes(id, notes) {
+    var item = findById(id);
+    var val = (notes || "").trim();
+    if (!item || (item.notes || "") === val) return;
+    mutate(
+      function () { return db.from("containers").update({ notes: val || null }).eq("id", id); },
+      function () { item.notes = val || null; }
+    );
+  }
+
+  // Deep link: focus the Flavors view on a specific container (from a QR link).
+  var focusTubId = null;
+  var focusTubTimer = null;
+
+  function applyFocusClass(scroll) {
+    if (!focusTubId) return;
+    var row = listEl.querySelector('.row[data-id="' + focusTubId + '"]');
+    if (!row) return;
+    row.classList.add("tub-focus");
+    if (scroll) row.scrollIntoView({ block: "center", behavior: "smooth" });
+  }
+
+  function focusTub(id) {
+    focusTubId = id;
+    if (focusTubTimer) clearTimeout(focusTubTimer);
+    setTimeout(function () { applyFocusClass(true); }, 60);
+    focusTubTimer = setTimeout(function () {
+      focusTubId = null;
+      var r = listEl.querySelector(".row.tub-focus");
+      if (r) r.classList.remove("tub-focus");
+    }, 6000);
+  }
+
+  function maybeHandleDeepLink() {
+    if (!deepLinkTub || deepLinkHandled) return;
+    deepLinkHandled = true;
+    switchView("containers");
+    if (!findById(deepLinkTub)) {
+      showNote("That tub isn't in stock anymore 🍦");
+      setTimeout(function () { showNote(""); }, 5000);
+      return;
+    }
+    focusTub(deepLinkTub);
   }
 
   function animateRemoval(id, done) {
@@ -722,7 +803,7 @@
 
   function undoFinish(a) {
     // restore container
-    inventory.push({ id: makeId(), flavor: a.snap.flavor, state: a.snap.state, date_made: a.snap.date_made });
+    inventory.push({ id: makeId(), flavor: a.snap.flavor, state: a.snap.state, date_made: a.snap.date_made, notes: a.snap.notes });
     emptiesCount = Math.max(0, emptiesCount - 1);
     // remove one local consumption for this flavor (most recent)
     for (var i = consumptions.length - 1; i >= 0; i--) {
@@ -731,7 +812,7 @@
     saveCache();
     render();
     if (usingSupabase) {
-      var ops = [db.from("containers").insert({ flavor: a.snap.flavor, state: a.snap.state, date_made: a.snap.date_made })];
+      var ops = [db.from("containers").insert({ flavor: a.snap.flavor, state: a.snap.state, date_made: a.snap.date_made, notes: a.snap.notes })];
       ops.push(a.emptyId ? db.from("empties").delete().eq("id", a.emptyId) : decrementEmptiesRemote(1));
       ops.push(a.consId ? db.from("consumptions").delete().eq("id", a.consId) : deleteLatestConsumptionRemote(a.snap.flavor));
       Promise.all(ops).then(function () { fetchAll(); }).catch(function (e) { console.error("undo failed", e); });
@@ -783,6 +864,7 @@
     flavorInput.value = "";
     qtyInput.value = "1";
     dateInput.value = todayISO();
+    notesInput.value = "";
     flavorInput.focus();
   }
   function closeModal() { modal.hidden = true; }
@@ -796,8 +878,9 @@
     var flavor = flavorInput.value.trim();
     var qty = Math.max(1, Math.min(99, parseInt(qtyInput.value, 10) || 1));
     var dateISO = dateInput.value || todayISO();
+    var notes = notesInput.value.trim();
     if (!flavor) return;
-    addContainers(flavor, qty, dateISO);
+    addContainers(flavor, qty, dateISO, notes);
     closeModal();
   });
 
