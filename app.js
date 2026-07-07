@@ -99,10 +99,14 @@
   function parseDay(iso) { return new Date(String(iso).slice(0, 10) + "T00:00:00"); }
 
   function tubSVG() {
+    // Full = solid purple fill; Half = white top with a purple bottom half.
+    // Fills are drawn first, outlines last so the stroke stays crisp.
     return '<svg class="tub-svg" viewBox="0 0 24 26">' +
-      '<path class="lid" d="M2.6 3.2 h18.8 a2.4 2.4 0 0 1 0 4.8 h-18.8 a2.4 2.4 0 0 1 0 -4.8 z"/>' +
-      '<path class="body" d="M3.6 7.6 h16.8 l-1.9 15.1 a1.4 1.4 0 0 1 -1.4 1.2 h-10.2 a1.4 1.4 0 0 1 -1.4 -1.2 z"/>' +
-      '<text class="tub-frac" x="12" y="18.5" text-anchor="middle">½</text>' +
+      '<path class="body-fill" d="M3.6 7.6 h16.8 l-1.9 15.1 a1.4 1.4 0 0 1 -1.4 1.2 h-10.2 a1.4 1.4 0 0 1 -1.4 -1.2 z"/>' +
+      '<path class="half-fill" d="M4.6 15.6 L19.4 15.6 L18.5 22.7 a1.4 1.4 0 0 1 -1.4 1.2 h-10.2 a1.4 1.4 0 0 1 -1.4 -1.2 Z"/>' +
+      '<path class="lid-fill" d="M2.6 3.2 h18.8 a2.4 2.4 0 0 1 0 4.8 h-18.8 a2.4 2.4 0 0 1 0 -4.8 z"/>' +
+      '<path class="tub-outline" d="M3.6 7.6 h16.8 l-1.9 15.1 a1.4 1.4 0 0 1 -1.4 1.2 h-10.2 a1.4 1.4 0 0 1 -1.4 -1.2 z"/>' +
+      '<path class="tub-outline" d="M2.6 3.2 h18.8 a2.4 2.4 0 0 1 0 4.8 h-18.8 a2.4 2.4 0 0 1 0 -4.8 z"/>' +
       '</svg>';
   }
   function countTubSVG(n) {
