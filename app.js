@@ -370,7 +370,7 @@
         });
         var st = document.createElement("span");
         st.className = "date-state";
-        st.textContent = item.state === "half" ? "½ tub" : "full";
+        st.textContent = item.state === "half" ? "half" : "full";
         d.appendChild(dateEdit); d.appendChild(flavorEdit); d.appendChild(st);
         dates.appendChild(d);
       });
@@ -456,7 +456,7 @@
     return inventory.map(function (i) {
       var age = daysBetween(today, parseDay(i.date_made));
       if (age < 0) age = 0;
-      return { label: i.flavor + (i.state === "half" ? " (½)" : ""), value: age + (age === 1 ? " day" : " days"), sort: age };
+      return { label: i.flavor + (i.state === "half" ? " (half)" : ""), value: age + (age === 1 ? " day" : " days"), sort: age };
     }).sort(function (a, b) { return b.sort - a.sort; }).slice(0, 6);
   }
 
