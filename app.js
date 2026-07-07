@@ -34,7 +34,8 @@
   var notesInput = document.getElementById("notes-input");
   var suggestions = document.getElementById("flavor-suggestions");
   var emptiesNumEl = document.getElementById("empties-num");
-  var emptiesResetEl = document.getElementById("empties-reset");
+  var emptiesMinusEl = document.getElementById("empties-minus");
+  var emptiesPlusEl = document.getElementById("empties-plus");
   // undo
   var undoBar = document.getElementById("undo-bar");
   var undoBtn = document.getElementById("undo-btn");
@@ -678,10 +679,18 @@
     );
   }
 
-  function resetEmpties() {
+  // Manually adjust the empty-container tally by one (minus floored at 0).
+  function incEmpties() {
     mutate(
-      function () { return db.from("empties").delete().not("id", "is", null); },
-      function () { emptiesCount = 0; }
+      function () { return db.from("empties").insert({}); },
+      function () { emptiesCount++; }
+    );
+  }
+  function decEmpties() {
+    if (emptiesCount <= 0) return;
+    mutate(
+      function () { return decrementEmptiesRemote(1); },
+      function () { emptiesCount = Math.max(0, emptiesCount - 1); }
     );
   }
 
@@ -839,10 +848,8 @@
     t.addEventListener("click", function () { switchView(t.dataset.view); });
   });
 
-  emptiesResetEl.addEventListener("click", function () {
-    if (emptiesCount === 0) return;
-    if (window.confirm("Reset the empty-container count to zero?")) resetEmpties();
-  });
+  emptiesPlusEl.addEventListener("click", incEmpties);
+  emptiesMinusEl.addEventListener("click", decEmpties);
 
   Array.prototype.forEach.call(periodSeg.querySelectorAll(".seg-btn"), function (b) {
     b.addEventListener("click", function () { analyticsPeriod = b.dataset.period; renderAnalytics(); });

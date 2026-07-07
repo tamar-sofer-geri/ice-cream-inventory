@@ -13,7 +13,7 @@
   <link rel="apple-touch-icon" href="apple-touch-icon.png" />
   <link rel="icon" href="icon.svg" type="image/svg+xml" />
   <title>Geri's Glideria</title>
-  <link rel="stylesheet" href="styles.css?v=11" />
+  <link rel="stylesheet" href="styles.css?v=14" />
 </head>
 <body>
   <div class="app">
@@ -38,7 +38,10 @@
         <div class="empties-card">
           <span class="empties-num" id="empties-num">0</span>
           <span class="empties-label">Empty containers</span>
-          <button id="empties-reset" class="empties-reset" type="button">Reset</button>
+          <div class="empties-adjust">
+            <button id="empties-minus" class="empties-btn" type="button" aria-label="Remove one empty container">−</button>
+            <button id="empties-plus" class="empties-btn" type="button" aria-label="Add one empty container">+</button>
+          </div>
         </div>
         <ul id="summary-list" class="summary-list" aria-live="polite"></ul>
         <p id="summary-empty" class="empty-state" hidden>Nothing in stock yet.</p>
@@ -145,6 +148,6 @@
   <!-- Supabase client (no build step) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
-  <script src="app.js?v=13"></script>
+  <script src="app.js?v=14"></script>
 </body>
 </html>

@@ -235,19 +235,26 @@ html, body {
   font-size: 16px;
   font-weight: 600;
 }
-.empties-reset {
+.empties-adjust {
   flex: 0 0 auto;
-  background: transparent;
-  border: 1.5px solid var(--line);
-  color: var(--muted);
-  border-radius: 999px;
-  padding: 7px 14px;
-  font-size: 13px;
+  display: flex;
+  gap: 8px;
+}
+.empties-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1.5px solid var(--accent);
+  background: #fff;
+  color: var(--accent-ink);
+  font-size: 22px;
+  line-height: 1;
   font-weight: 600;
   cursor: pointer;
-  min-height: 36px;
+  display: grid;
+  place-items: center;
 }
-.empties-reset:active { transform: scale(0.96); }
+.empties-btn:active { transform: scale(0.94); }
 
 .summary-item {
   background: var(--card);
