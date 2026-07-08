@@ -96,7 +96,18 @@
     } catch (e) { log("getDevices failed: " + e.message); return null; }
   }
 
-  async function connect() {
+  // Share one in-flight connect so concurrent callers (e.g. a warm-up tap and
+  // the actual print) don't each trigger the pairing popup.
+  var connecting = null;
+  function connect() {
+    if (device && device.gatt && device.gatt.connected && writeChar) return Promise.resolve();
+    if (connecting) return connecting;
+    connecting = doConnect();
+    connecting.then(function () { connecting = null; }, function () { connecting = null; });
+    return connecting;
+  }
+
+  async function doConnect() {
     if (device && device.gatt && device.gatt.connected && writeChar) return;
     if (!navigator.bluetooth) throw new Error("This browser has no Web Bluetooth. Use Chrome on Android.");
     if (!device) {
@@ -375,8 +386,15 @@
     }
   }
 
+  // Warm up the connection during a user gesture (e.g. the "Add & print" tap)
+  // so a later async print doesn't need a fresh gesture for the popup.
+  function warmup() {
+    resetStatus("Connecting to printer");
+    return connect().catch(function (e) { log((e && e.message) || String(e), true); });
+  }
+
   window.GlideriaPrinter = {
-    printLabel: printLabel, selfTest: selfTest, config: CFG,
+    printLabel: printLabel, selfTest: selfTest, config: CFG, warmup: warmup,
     previewLabel: function (c) { return orient(renderLabel(c)); }
   };
 })();

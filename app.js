@@ -810,7 +810,18 @@
     );
   }
 
-  function addContainers(flavor, qty, dateISO, notes) {
+  // Print a label for each freshly-inserted row, one after another.
+  function printLabels(list) {
+    if (!window.GlideriaPrinter || !list || !list.length) return;
+    var i = 0;
+    (function next() {
+      if (i >= list.length) return;
+      var row = list[i++];
+      Promise.resolve(window.GlideriaPrinter.printLabel(row)).then(next, next);
+    })();
+  }
+
+  function addContainers(flavor, qty, dateISO, notes, printAfter) {
     var rows = [];
     for (var i = 0; i < qty; i++) {
       rows.push({ flavor: flavor, state: "full", date_made: dateISO, notes: notes || null });
@@ -819,10 +830,12 @@
     mutate(
       function () {
         return Promise.all([
-          db.from("containers").insert(rows),
+          db.from("containers").insert(rows).select("*"),
           decrementEmptiesRemote(dec)
         ]).then(function (results) {
           var bad = results.filter(function (r) { return r && r.error; })[0];
+          // Print the server rows (real id + created_at) so the QR is valid.
+          if (!bad && printAfter && results[0] && results[0].data) printLabels(results[0].data);
           return { error: bad ? bad.error : null };
         });
       },
@@ -1005,16 +1018,36 @@
   });
   document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !modal.hidden) closeModal(); });
 
-  addForm.addEventListener("submit", function (e) {
-    e.preventDefault();
+  function readAddForm() {
     var flavor = flavorInput.value.trim();
-    var qty = Math.max(1, Math.min(99, parseInt(qtyInput.value, 10) || 1));
-    var dateISO = dateInput.value || todayISO();
-    var notes = notesInput.value.trim();
-    if (!flavor) return;
-    addContainers(flavor, qty, dateISO, notes);
+    if (!flavor) return null;
+    return {
+      flavor: flavor,
+      qty: Math.max(1, Math.min(99, parseInt(qtyInput.value, 10) || 1)),
+      dateISO: dateInput.value || todayISO(),
+      notes: notesInput.value.trim()
+    };
+  }
+
+  function submitAdd(printAfter) {
+    var f = readAddForm();
+    if (!f) { flavorInput.focus(); return; }
+    addContainers(f.flavor, f.qty, f.dateISO, f.notes, printAfter);
     closeModal();
-  });
+  }
+
+  addForm.addEventListener("submit", function (e) { e.preventDefault(); submitAdd(false); });
+
+  var addPrintBtn = document.getElementById("add-print-btn");
+  if (addPrintBtn && window.GlideriaPrinter && navigator.bluetooth) {
+    addPrintBtn.hidden = false;
+    addPrintBtn.addEventListener("click", function () {
+      if (!readAddForm()) { flavorInput.focus(); return; }
+      // Start connecting now, while this tap still counts as a user gesture.
+      window.GlideriaPrinter.warmup();
+      submitAdd(true);
+    });
+  }
 
   /* ---------- realtime + boot ---------- */
 
