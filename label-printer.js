@@ -15,6 +15,9 @@
 
   // ---- adjustable config ------------------------------------------------
   var CFG = {
+    // VERIFIED WORKING on the real M220 (2026-07-08). Label is loaded
+    // LANDSCAPE: 40mm runs across the print head, 30mm is the feed. rotate=0
+    // (design maps straight onto the bitmap — no rotation). Don't swap these.
     labelWidthMm: 40,   // across the roll / print head (label loaded landscape)
     labelHeightMm: 30,  // along the feed (print length)
     rotate: 0,          // degrees clockwise to rotate the design before printing (0/90/180/270)
