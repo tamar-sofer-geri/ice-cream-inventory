@@ -12,9 +12,13 @@
 (function () {
   "use strict";
 
-  var CACHE_KEY = "glideriaCache";
   var cfg = window.GLIDERIA_CONFIG || {};
-  var usingSupabase = !!(cfg.supabaseUrl && cfg.supabaseAnonKey && window.supabase);
+  // Demo mode (?demo=1): runs entirely on-device, never touches the real
+  // backend, and is seeded with sample data so friends can play freely.
+  var isDemo = false;
+  try { isDemo = new URLSearchParams(location.search).get("demo") === "1"; } catch (e) {}
+  var CACHE_KEY = isDemo ? "glideriaDemoCache" : "glideriaCache";
+  var usingSupabase = !isDemo && !!(cfg.supabaseUrl && cfg.supabaseAnonKey && window.supabase);
   var db = usingSupabase
     ? window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey)
     : null;
@@ -25,6 +29,8 @@
   var summaryEl = document.getElementById("summary-list");
   var summaryEmptyEl = document.getElementById("summary-empty");
   var syncNote = document.getElementById("sync-note");
+  var demoBanner = document.getElementById("demo-banner");
+  var demoResetEl = document.getElementById("demo-reset");
   var addBtn = document.getElementById("add-btn");
   var modal = document.getElementById("add-modal");
   var addForm = document.getElementById("add-form");
@@ -156,6 +162,40 @@
 
   /* ---------- cache ---------- */
 
+  // Sample data for the demo sandbox (dates are relative to "now" each load).
+  function demoSeed() {
+    var now = Date.now(), DAY = 86400000;
+    function iso(msAgo) { return new Date(now - msAgo).toISOString(); }
+    function d(daysAgo) {
+      var x = new Date(now - daysAgo * DAY);
+      return x.getFullYear() + "-" + pad2(x.getMonth() + 1) + "-" + pad2(x.getDate());
+    }
+    var containers = [
+      { id: makeId(), flavor: "Vanilla", state: "full", date_made: d(3), notes: null, created_at: iso(3 * DAY) },
+      { id: makeId(), flavor: "Vanilla", state: "half", date_made: d(6), notes: null, created_at: iso(6 * DAY) },
+      { id: makeId(), flavor: "Chocolate", state: "full", date_made: d(2), notes: "extra cocoa", created_at: iso(2 * DAY) },
+      { id: makeId(), flavor: "Strawberry", state: "full", date_made: d(0), notes: "fresh local berries", created_at: iso(90 * 1000) },
+      { id: makeId(), flavor: "Coffee", state: "full", date_made: d(4), notes: null, created_at: iso(4 * DAY) },
+      { id: makeId(), flavor: "Mango", state: "half", date_made: d(5), notes: null, created_at: iso(5 * DAY) },
+      { id: makeId(), flavor: "Pistachio", state: "full", date_made: d(1), notes: null, created_at: iso(1 * DAY) },
+      { id: makeId(), flavor: "Cookies & Cream", state: "full", date_made: d(3), notes: null, created_at: iso(3 * DAY) },
+      { id: makeId(), flavor: "Cookies & Cream", state: "full", date_made: d(3), notes: null, created_at: iso(3 * DAY) }
+    ];
+    var flavors = ["Vanilla", "Chocolate", "Coffee", "Mango", "Strawberry", "Pistachio", "Cookies & Cream", "Lemon", "Peach"];
+    var consumptions = [];
+    for (var i = 0; i < 20; i++) {
+      var daysAgo = Math.floor(Math.random() * 42) + 1;
+      var wait = Math.floor(Math.random() * 10) + 2;
+      consumptions.push({
+        id: makeId(),
+        flavor: flavors[Math.floor(Math.random() * flavors.length)],
+        date_made: d(daysAgo + wait),
+        consumed_at: iso(daysAgo * DAY)
+      });
+    }
+    return { containers: containers, empties: 3, consumptions: consumptions };
+  }
+
   function loadCache() {
     try {
       var raw = window.localStorage.getItem(CACHE_KEY);
@@ -166,8 +206,18 @@
         return parsed.containers;
       }
       if (Array.isArray(parsed)) return parsed; // legacy
-      return [];
-    } catch (e) { return []; }
+    } catch (e) { /* fall through */ }
+    if (isDemo) {
+      var seed = demoSeed();
+      emptiesCount = seed.empties;
+      consumptions = seed.consumptions;
+      try {
+        window.localStorage.setItem(CACHE_KEY, JSON.stringify(
+          { containers: seed.containers, empties: seed.empties, consumptions: seed.consumptions }));
+      } catch (e) { /* ignore */ }
+      return seed.containers;
+    }
+    return [];
   }
 
   function saveCache() {
@@ -960,9 +1010,16 @@
       .subscribe();
 
     document.addEventListener("visibilitychange", function () { if (!document.hidden) fetchAll(); });
+  } else if (isDemo) {
+    if (demoBanner) demoBanner.hidden = false;
   } else {
     showNote("Local-only mode: add your Supabase keys in config.js to sync across devices.");
   }
+
+  if (demoResetEl) demoResetEl.addEventListener("click", function () {
+    try { window.localStorage.removeItem(CACHE_KEY); } catch (e) { /* ignore */ }
+    location.reload();
+  });
 
   render();
   fetchAll();

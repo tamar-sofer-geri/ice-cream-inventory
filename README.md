@@ -30,6 +30,10 @@ Changes made on one device appear on the others automatically (real-time). A `lo
 
 On your phone, open the link and use your browser's **Add to Home Screen** to install it like an app.
 
+### Demo mode
+
+Add `?demo=1` to the URL — **<https://tamar-sofer-geri.github.io/ice-cream-inventory/?demo=1>** — for a shareable sandbox. It runs entirely in the visitor's browser (never connects to Supabase), is seeded with sample flavors, and has a **Reset demo** button. Nothing done in demo mode can affect the real inventory.
+
 ## Configuration
 
 Backend connection lives in `config.js`:

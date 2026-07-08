@@ -64,6 +64,34 @@ html, body {
 }
 .add-btn:active { transform: scale(0.94); }
 
+.demo-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 4px 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #efe7fb;
+  border: 1px solid var(--line);
+  color: var(--accent-ink);
+  font-size: 13px;
+}
+.demo-banner[hidden] { display: none; }
+.demo-text { flex: 1 1 auto; line-height: 1.35; }
+.demo-reset {
+  flex: 0 0 auto;
+  background: var(--accent-strong);
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.demo-reset:active { transform: scale(0.95); }
+
 .sync-note {
   margin: 0 4px 10px;
   padding: 8px 12px;
