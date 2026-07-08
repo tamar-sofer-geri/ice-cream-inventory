@@ -123,10 +123,15 @@
   // Purple sand timer shown in place of the tub while a flavor is curing.
   function hourglassSVG() {
     return '<svg class="timer-svg" viewBox="0 0 24 26">' +
-      '<rect x="4.5" y="2.4" width="15" height="2.6" rx="1.3"/>' +
-      '<rect x="4.5" y="21" width="15" height="2.6" rx="1.3"/>' +
-      '<path d="M6.7 5 H17.3 L12 12.7 Z"/>' +
-      '<path d="M12 12.7 L17.3 21 H6.7 Z"/>' +
+      '<rect x="4.6" y="2" width="14.8" height="2.8" rx="1"/>' +
+      '<rect x="4.6" y="21.2" width="14.8" height="2.8" rx="1"/>' +
+      '<path class="glass" d="M7 4.8 C 7 9.6 10 11.8 12 13 C 14 14.2 17 16.6 17 21.2"/>' +
+      '<path class="glass" d="M17 4.8 C 17 9.6 14 11.8 12 13 C 10 14.2 7 16.6 7 21.2"/>' +
+      '<path d="M8.2 5.6 Q 10 7.2 12 6.4 Q 14 5.6 15.8 6.4 C 14.4 9.6 12.9 11 12 12.1 C 11.1 11 9.6 9.6 8.2 6.4 Z"/>' +
+      '<circle cx="12" cy="14.6" r="0.5"/>' +
+      '<circle cx="12" cy="16" r="0.42"/>' +
+      '<circle cx="12" cy="17.3" r="0.36"/>' +
+      '<path d="M8 20.5 C 8.5 17.6 15.5 17.6 16 20.5 Z"/>' +
       '</svg>';
   }
 

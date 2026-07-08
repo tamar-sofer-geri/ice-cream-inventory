@@ -161,7 +161,15 @@ html, body {
   color: var(--accent-strong);
 }
 .timer-svg rect,
+.timer-svg circle,
 .timer-svg path { fill: currentColor; }
+.timer-svg .glass {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.15;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
 .tub-svg .tub-outline {
   fill: none;
   stroke: var(--accent-ink);
