@@ -167,14 +167,41 @@
     return { date: dateStr, time: timeStr };
   }
 
+  var FONT = "-apple-system, Helvetica, Arial, sans-serif";
+  function setFont(ctx, size, weight) { ctx.font = (weight || "bold") + " " + size + "px " + FONT; }
+
   function fitFont(ctx, text, maxWidth, startPx, weight) {
     var size = startPx;
     do {
-      ctx.font = (weight || "bold") + " " + size + "px -apple-system, Helvetica, Arial, sans-serif";
+      setFont(ctx, size, weight);
       if (ctx.measureText(text).width <= maxWidth) break;
       size -= 2;
     } while (size > 12);
     return size;
+  }
+
+  // greedy word-wrap at the current ctx.font
+  function wrapText(ctx, text, maxWidth) {
+    var words = String(text).split(/\s+/), lines = [], cur = "";
+    for (var i = 0; i < words.length; i++) {
+      var test = cur ? cur + " " + words[i] : words[i];
+      if (!cur || ctx.measureText(test).width <= maxWidth) cur = test;
+      else { lines.push(cur); cur = words[i]; }
+    }
+    if (cur) lines.push(cur);
+    return lines;
+  }
+
+  // shrink until the text wraps into <= maxLines lines that each fit maxWidth
+  function fitWrapped(ctx, text, maxWidth, maxLines, startPx, weight) {
+    for (var size = startPx; size >= 12; size -= 2) {
+      setFont(ctx, size, weight);
+      var lines = wrapText(ctx, text, maxWidth), ok = lines.length <= maxLines;
+      for (var i = 0; ok && i < lines.length; i++) if (ctx.measureText(lines[i]).width > maxWidth) ok = false;
+      if (ok) return { lines: lines, size: size };
+    }
+    setFont(ctx, 12, weight);
+    return { lines: wrapText(ctx, text, maxWidth), size: 12 };
   }
 
   function rot() { return ((CFG.rotate % 360) + 360) % 360; }
@@ -209,49 +236,53 @@
     ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, w, h);
     ctx.fillStyle = "#000"; ctx.textBaseline = "top";
 
-    var pad = 8, y = pad;
+    var pad = 12;
 
-    // brand
-    ctx.textAlign = "center";
-    ctx.font = "bold 15px -apple-system, Helvetica, Arial, sans-serif";
-    ctx.fillText("Geri's Glideria", w / 2, y);
-    y += 20;
-
-    // flavor (fit to width)
-    var fSize = fitFont(ctx, container.flavor, w - pad * 2, 34, "bold");
-    ctx.font = "bold " + fSize + "px -apple-system, Helvetica, Arial, sans-serif";
-    ctx.fillText(container.flavor, w / 2, y);
-    y += fSize + 6;
-
-    // date + time
-    var dt = shortDateTime(container);
-    ctx.font = "18px -apple-system, Helvetica, Arial, sans-serif";
-    if (dt.date) { ctx.fillText(dt.date, w / 2, y); y += 22; }
-    if (dt.time) { ctx.fillText(dt.time, w / 2, y); y += 22; }
-
-    // QR code (deep link to this tub)
+    // QR on the right (deep link to this tub); build first so text knows its width
+    var qr = null, qrCount = 0, qrCell = 0, qrDim = 0;
     if (CFG.includeQR && window.qrcode) {
       try {
-        var base = location.origin + location.pathname;
-        var url = base + "?tub=" + container.id;
-        var qr = window.qrcode(0, "M");
-        qr.addData(url);
-        qr.make();
-        var count = qr.getModuleCount();
-        var avail = h - y - pad;
-        var qrSize = Math.min(w - pad * 2, avail);
-        var cell = Math.floor(qrSize / (count + 2));
-        if (cell < 1) cell = 1;
-        var dim = cell * count;
-        var ox = Math.floor((w - dim) / 2);
-        var oy = y + Math.floor((avail - dim) / 2);
-        ctx.fillStyle = "#000";
-        for (var r = 0; r < count; r++) {
-          for (var c = 0; c < count; c++) {
-            if (qr.isDark(r, c)) ctx.fillRect(ox + c * cell, oy + r * cell, cell, cell);
-          }
+        var url = location.origin + location.pathname + "?tub=" + container.id;
+        qr = window.qrcode(0, "M"); qr.addData(url); qr.make();
+        qrCount = qr.getModuleCount();
+        var target = Math.min(h - pad * 2, Math.round(w * 0.42));
+        qrCell = Math.max(1, Math.floor(target / qrCount));
+        qrDim = qrCell * qrCount;
+      } catch (e) { log("QR skipped: " + e.message); qr = null; }
+    }
+
+    // Text column fills the space left of the QR.
+    var textW = (qrDim ? (w - qrDim - pad * 3) : (w - pad * 2));
+    var cx = pad + textW / 2;
+    var gap = 4;
+
+    var fl = fitWrapped(ctx, container.flavor, textW, 3, 46, "bold");
+    var dt = shortDateTime(container);
+    var dtSize = 30;
+    if (dt.date) dtSize = Math.min(dtSize, fitFont(ctx, dt.date, textW, dtSize, "bold"));
+    if (dt.time) dtSize = Math.min(dtSize, fitFont(ctx, dt.time, textW, dtSize, "bold"));
+
+    var blockH = fl.lines.length * fl.size + (fl.lines.length - 1) * gap;
+    if (dt.date) blockH += 12 + dtSize;
+    if (dt.time) blockH += gap + dtSize;
+    var y = Math.max(pad, Math.floor((h - blockH) / 2));
+
+    ctx.textAlign = "center";
+    setFont(ctx, fl.size, "bold");
+    for (var i = 0; i < fl.lines.length; i++) { ctx.fillText(fl.lines[i], cx, y); y += fl.size + gap; }
+    y += 12 - gap;
+    setFont(ctx, dtSize, "bold");
+    if (dt.date) { ctx.fillText(dt.date, cx, y); y += dtSize + gap; }
+    if (dt.time) { ctx.fillText(dt.time, cx, y); }
+
+    if (qr) {
+      var ox = w - pad - qrDim, oy = Math.floor((h - qrDim) / 2);
+      ctx.fillStyle = "#000";
+      for (var r = 0; r < qrCount; r++) {
+        for (var c = 0; c < qrCount; c++) {
+          if (qr.isDark(r, c)) ctx.fillRect(ox + c * qrCell, oy + r * qrCell, qrCell, qrCell);
         }
-      } catch (e) { log("QR skipped: " + e.message); }
+      }
     }
     return canvas;
   }
