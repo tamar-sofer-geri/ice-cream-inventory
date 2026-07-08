@@ -1001,6 +1001,7 @@
   var printStatus = document.getElementById("print-status");
   if (printStatus) printStatus.addEventListener("click", function (e) {
     if (e.target.hasAttribute("data-print-close")) printStatus.hidden = true;
+    if (e.target.hasAttribute("data-print-test") && window.GlideriaPrinter) window.GlideriaPrinter.selfTest();
   });
   document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !modal.hidden) closeModal(); });
 

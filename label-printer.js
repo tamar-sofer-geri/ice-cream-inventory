@@ -28,7 +28,7 @@
   var SERVICE = 0xff00, SERVICE_FULL = "0000ff00-0000-1000-8000-00805f9b34fb";
   var WRITE_CHAR = 0xff02;
 
-  var device = null, writeChar = null;
+  var device = null, writeChar = null, writeNeedsResponse = false;
 
   // ---- tiny status UI ---------------------------------------------------
   function statusEl() { return document.getElementById("print-status"); }
@@ -56,6 +56,21 @@
   // ---- BLE --------------------------------------------------------------
   function delay(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
 
+  function props(c) {
+    var p = c.properties, out = [];
+    if (p.write) out.push("write");
+    if (p.writeWithoutResponse) out.push("writeNR");
+    if (p.notify) out.push("notify");
+    if (p.indicate) out.push("indicate");
+    if (p.read) out.push("read");
+    return out.join(",") || "none";
+  }
+  function shortUuid(u) {
+    // 0000ff02-0000-1000-8000-00805f9b34fb -> ff02
+    var m = /^0000([0-9a-f]{4})-0000-1000-8000-00805f9b34fb$/i.exec(u);
+    return m ? m[1] : u;
+  }
+
   async function connect() {
     if (device && device.gatt && device.gatt.connected && writeChar) return;
     if (!navigator.bluetooth) throw new Error("This browser has no Web Bluetooth. Use Chrome on Android.");
@@ -63,25 +78,58 @@
       log("Choose your printer in the popup (look for M220…)…");
       device = await navigator.bluetooth.requestDevice({
         acceptAllDevices: true,
-        optionalServices: [SERVICE, SERVICE_FULL]
+        optionalServices: [SERVICE, SERVICE_FULL, 0xff10, "0000ffe0-0000-1000-8000-00805f9b34fb", 0x18f0]
       });
       device.addEventListener("gattserverdisconnected", function () { writeChar = null; });
     }
     log("Connecting to " + (device.name || "printer") + "…");
     var server = await device.gatt.connect();
     await delay(300);
-    var service = null;
-    var tries = [SERVICE, SERVICE_FULL];
-    for (var i = 0; i < tries.length; i++) {
-      try { service = await server.getPrimaryService(tries[i]); break; } catch (e) { /* try next */ }
+
+    // Enumerate everything so we can see what this M220 actually exposes.
+    writeChar = null;
+    var notifyChar = null, preferred = null;
+    var services = [];
+    try { services = await server.getPrimaryServices(); } catch (e) { log("getPrimaryServices failed: " + e.message, true); }
+    log("Found " + services.length + " service(s):");
+    for (var i = 0; i < services.length; i++) {
+      var svc = services[i];
+      var chars = [];
+      try { chars = await svc.getCharacteristics(); } catch (e) { chars = []; }
+      log("• svc " + shortUuid(svc.uuid));
+      for (var j = 0; j < chars.length; j++) {
+        var ch = chars[j], p = ch.properties;
+        log("   – " + shortUuid(ch.uuid) + " [" + props(ch) + "]");
+        if (p.write || p.writeWithoutResponse) {
+          if (shortUuid(ch.uuid).toLowerCase() === "ff02") preferred = ch;
+          else if (!writeChar) writeChar = ch;
+        }
+        if ((p.notify || p.indicate) && !notifyChar) notifyChar = ch;
+      }
     }
-    if (!service) throw new Error("Couldn't find the printer's print service.");
-    writeChar = await service.getCharacteristic(WRITE_CHAR);
+    if (preferred) writeChar = preferred;
+    if (!writeChar) throw new Error("No writable characteristic found on this printer.");
+    writeNeedsResponse = !writeChar.properties.writeWithoutResponse;
+    log("Using write char " + shortUuid(writeChar.uuid) + " (" + (writeNeedsResponse ? "with response" : "no response") + ").");
+
+    // Listen to the printer's status channel, if any, so we can see it react.
+    if (notifyChar) {
+      try {
+        await notifyChar.startNotifications();
+        notifyChar.addEventListener("characteristicvaluechanged", function (ev) {
+          var v = ev.target.value, hex = [];
+          for (var k = 0; k < v.byteLength; k++) hex.push(("0" + v.getUint8(k).toString(16)).slice(-2));
+          log("↩ printer: " + hex.join(" "));
+        });
+        log("Listening on " + shortUuid(notifyChar.uuid) + " for printer status.");
+      } catch (e) { log("notify subscribe skipped: " + e.message); }
+    }
     log("Connected.");
   }
 
   async function send(arr) {
     var buf = (arr instanceof Uint8Array) ? arr : new Uint8Array(arr);
+    if (writeNeedsResponse) { await writeChar.writeValue(buf); return; }
     try { await writeChar.writeValueWithoutResponse(buf); }
     catch (e) { await writeChar.writeValue(buf); }
   }
@@ -229,5 +277,23 @@
     }
   }
 
-  window.GlideriaPrinter = { printLabel: printLabel, config: CFG, previewLabel: renderLabel };
+  // ---- diagnostics: prove commands reach the printer --------------------
+  // Connects, enumerates, then just feeds paper. If the motor moves, the
+  // transport is good and any "nothing prints" issue is in the raster.
+  async function selfTest() {
+    resetStatus("Printer self-test");
+    try {
+      await connect();
+      log("Sending INIT + a paper feed…");
+      await send(INIT); await delay(120);
+      await send(FEED(80));
+      await delay(400);
+      log("If the paper advanced, transport works. If not, the write");
+      log("characteristic/protocol is wrong — copy the service list above.");
+    } catch (e) {
+      log((e && e.message) || String(e), true);
+    }
+  }
+
+  window.GlideriaPrinter = { printLabel: printLabel, selfTest: selfTest, config: CFG, previewLabel: renderLabel };
 })();
