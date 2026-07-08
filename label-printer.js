@@ -15,9 +15,9 @@
 
   // ---- adjustable config ------------------------------------------------
   var CFG = {
-    labelWidthMm: 30,   // across the roll (print width)
-    labelHeightMm: 40,  // along the feed (print length)
-    rotate: 270,        // degrees clockwise to rotate the design before printing (0/90/180/270)
+    labelWidthMm: 40,   // across the roll / print head (label loaded landscape)
+    labelHeightMm: 30,  // along the feed (print length)
+    rotate: 0,          // degrees clockwise to rotate the design before printing (0/90/180/270)
     align: "right",     // right-aligned roll on the M220
     density: 8,         // 1–8 (darkness)
     feedDots: 40,       // feed after printing
