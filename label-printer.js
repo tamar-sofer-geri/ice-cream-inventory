@@ -60,12 +60,9 @@
     if (device && device.gatt && device.gatt.connected && writeChar) return;
     if (!navigator.bluetooth) throw new Error("This browser has no Web Bluetooth. Use Chrome on Android.");
     if (!device) {
-      log("Choose your printer in the popup…");
+      log("Choose your printer in the popup (look for M220…)…");
       device = await navigator.bluetooth.requestDevice({
-        filters: [
-          { namePrefix: "M" }, { namePrefix: "Phomemo" },
-          { namePrefix: "D" }, { namePrefix: "P" }, { namePrefix: "T" }
-        ],
+        acceptAllDevices: true,
         optionalServices: [SERVICE, SERVICE_FULL]
       });
       device.addEventListener("gattserverdisconnected", function () { writeChar = null; });
