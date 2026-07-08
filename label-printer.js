@@ -83,13 +83,17 @@
   // Look for a printer we've already been granted access to, so we can
   // reconnect without showing the pairing popup again. Supported on Chrome.
   async function findRemembered() {
-    if (!navigator.bluetooth.getDevices) return null;
+    if (!navigator.bluetooth.getDevices) {
+      log("This Chrome can't remember printers (no getDevices). It'll ask each time.");
+      return null;
+    }
     try {
       var known = await navigator.bluetooth.getDevices();
+      log("Remembered devices: " + ((known && known.length) || 0));
       if (!known || !known.length) return null;
       var m = known.filter(function (d) { return /m220|phomemo|m0|m1|m2/i.test(d.name || ""); });
       return (m[0] || known[0]) || null;
-    } catch (e) { return null; }
+    } catch (e) { log("getDevices failed: " + e.message); return null; }
   }
 
   async function connect() {
