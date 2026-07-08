@@ -108,8 +108,16 @@
   var CURE_MS = 24 * 60 * 60 * 1000;
   function isCuring(item) {
     if (!item || !item.created_at) return false;
-    var age = Date.now() - new Date(item.created_at).getTime();
-    return age >= 0 && age < CURE_MS;
+    var created = new Date(item.created_at).getTime();
+    var age = Date.now() - created;
+    if (age < 0 || age >= CURE_MS) return false;
+    // Don't show the timer for tubs backdated to an earlier day (i.e. logging
+    // an older batch) — the ice cream was made well before it was entered.
+    if (item.date_made) {
+      var made = new Date(String(item.date_made).slice(0, 10) + "T00:00:00").getTime();
+      if (created - made > CURE_MS + 12 * 60 * 60 * 1000) return false; // entered >36h after the made date
+    }
+    return true;
   }
 
   // Purple sand timer shown in place of the tub while a flavor is curing.
