@@ -236,47 +236,44 @@
     ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, w, h);
     ctx.fillStyle = "#000"; ctx.textBaseline = "top";
 
-    var pad = 12;
+    var pad = 12, gap = 4;
 
-    // QR on the right (deep link to this tub); build first so text knows its width
+    // Build the QR (deep link to this tub) up front, sized for the bottom-right
+    // corner so the flavor can use the FULL label width above it.
     var qr = null, qrCount = 0, qrCell = 0, qrDim = 0;
     if (CFG.includeQR && window.qrcode) {
       try {
         var url = location.origin + location.pathname + "?tub=" + container.id;
         qr = window.qrcode(0, "M"); qr.addData(url); qr.make();
         qrCount = qr.getModuleCount();
-        var target = Math.min(h - pad * 2, Math.round(w * 0.42));
+        var target = Math.min(Math.round(h * 0.5), Math.round(w * 0.4));
         qrCell = Math.max(1, Math.floor(target / qrCount));
         qrDim = qrCell * qrCount;
       } catch (e) { log("QR skipped: " + e.message); qr = null; }
     }
+    var ox = w - pad - qrDim, oy = h - pad - qrDim;   // QR corner origin
 
-    // Text column fills the space left of the QR.
-    var textW = (qrDim ? (w - qrDim - pad * 3) : (w - pad * 2));
-    var cx = pad + textW / 2;
-    var gap = 4;
-
-    var fl = fitWrapped(ctx, container.flavor, textW, 3, 46, "bold");
-    var dt = shortDateTime(container);
-    var dtSize = 30;
-    if (dt.date) dtSize = Math.min(dtSize, fitFont(ctx, dt.date, textW, dtSize, "bold"));
-    if (dt.time) dtSize = Math.min(dtSize, fitFont(ctx, dt.time, textW, dtSize, "bold"));
-
-    var blockH = fl.lines.length * fl.size + (fl.lines.length - 1) * gap;
-    if (dt.date) blockH += 12 + dtSize;
-    if (dt.time) blockH += gap + dtSize;
-    var y = Math.max(pad, Math.floor((h - blockH) / 2));
-
+    // Flavor: full label width, along the top, wrapped + auto-fit.
+    var fl = fitWrapped(ctx, container.flavor, w - pad * 2, 2, 48, "bold");
     ctx.textAlign = "center";
     setFont(ctx, fl.size, "bold");
-    for (var i = 0; i < fl.lines.length; i++) { ctx.fillText(fl.lines[i], cx, y); y += fl.size + gap; }
-    y += 12 - gap;
+    var y = pad;
+    for (var i = 0; i < fl.lines.length; i++) { ctx.fillText(fl.lines[i], w / 2, y); y += fl.size + gap; }
+
+    // Date + time: bottom-left, in the space beside the QR.
+    var dt = shortDateTime(container);
+    var dtW = (qrDim ? ox - pad * 2 : w - pad * 2);
+    var dtcx = pad + dtW / 2;
+    var dtSize = 30;
+    if (dt.date) dtSize = Math.min(dtSize, fitFont(ctx, dt.date, dtW, dtSize, "bold"));
+    if (dt.time) dtSize = Math.min(dtSize, fitFont(ctx, dt.time, dtW, dtSize, "bold"));
+    var dtH = (dt.date ? dtSize : 0) + (dt.time ? dtSize + gap : 0);
+    var dty = qrDim ? Math.max(y, oy + Math.floor((qrDim - dtH) / 2)) : y + 6;
     setFont(ctx, dtSize, "bold");
-    if (dt.date) { ctx.fillText(dt.date, cx, y); y += dtSize + gap; }
-    if (dt.time) { ctx.fillText(dt.time, cx, y); }
+    if (dt.date) { ctx.fillText(dt.date, dtcx, dty); dty += dtSize + gap; }
+    if (dt.time) { ctx.fillText(dt.time, dtcx, dty); }
 
     if (qr) {
-      var ox = w - pad - qrDim, oy = Math.floor((h - qrDim) / 2);
       ctx.fillStyle = "#000";
       for (var r = 0; r < qrCount; r++) {
         for (var c = 0; c < qrCount; c++) {
