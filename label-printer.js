@@ -75,16 +75,36 @@
     return m ? m[1] : u;
   }
 
+  function useDevice(d) {
+    device = d;
+    device.addEventListener("gattserverdisconnected", function () { writeChar = null; });
+  }
+
+  // Look for a printer we've already been granted access to, so we can
+  // reconnect without showing the pairing popup again. Supported on Chrome.
+  async function findRemembered() {
+    if (!navigator.bluetooth.getDevices) return null;
+    try {
+      var known = await navigator.bluetooth.getDevices();
+      if (!known || !known.length) return null;
+      var m = known.filter(function (d) { return /m220|phomemo|m0|m1|m2/i.test(d.name || ""); });
+      return (m[0] || known[0]) || null;
+    } catch (e) { return null; }
+  }
+
   async function connect() {
     if (device && device.gatt && device.gatt.connected && writeChar) return;
     if (!navigator.bluetooth) throw new Error("This browser has no Web Bluetooth. Use Chrome on Android.");
     if (!device) {
+      var remembered = await findRemembered();
+      if (remembered) { useDevice(remembered); log("Reconnecting to saved printer (" + (remembered.name || "printer") + ")…"); }
+    }
+    if (!device) {
       log("Choose your printer in the popup (look for M220…)…");
-      device = await navigator.bluetooth.requestDevice({
+      useDevice(await navigator.bluetooth.requestDevice({
         acceptAllDevices: true,
         optionalServices: [SERVICE, SERVICE_FULL, 0xff10, "0000ffe0-0000-1000-8000-00805f9b34fb", 0x18f0]
-      });
-      device.addEventListener("gattserverdisconnected", function () { writeChar = null; });
+      }));
     }
     log("Connecting to " + (device.name || "printer") + "…");
     var server = await device.gatt.connect();
