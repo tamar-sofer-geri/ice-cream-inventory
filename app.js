@@ -104,6 +104,24 @@
   }
   function parseDay(iso) { return new Date(String(iso).slice(0, 10) + "T00:00:00"); }
 
+  // A tub is still "curing" (not ready to eat) for 24h after it was made.
+  var CURE_MS = 24 * 60 * 60 * 1000;
+  function isCuring(item) {
+    if (!item || !item.created_at) return false;
+    var age = Date.now() - new Date(item.created_at).getTime();
+    return age >= 0 && age < CURE_MS;
+  }
+
+  // Purple sand timer shown in place of the tub while a flavor is curing.
+  function hourglassSVG() {
+    return '<svg class="timer-svg" viewBox="0 0 24 26">' +
+      '<rect x="4.5" y="2.4" width="15" height="2.6" rx="1.3"/>' +
+      '<rect x="4.5" y="21" width="15" height="2.6" rx="1.3"/>' +
+      '<path d="M6.7 5 H17.3 L12 12.7 Z"/>' +
+      '<path d="M12 12.7 L17.3 21 H6.7 Z"/>' +
+      '</svg>';
+  }
+
   function tubSVG() {
     // Full = solid purple fill; Half = white top with a purple bottom half.
     // Fills are drawn first, outlines last so the stroke stays crisp.
@@ -231,6 +249,26 @@
     applyFocusClass(false); // keep a deep-link highlight through re-renders
   }
 
+  // Swap curing hourglasses to the tub icon once 24h passes, without a full
+  // re-render (so it never disrupts editing on the Inventory page).
+  function refreshCuringIcons() {
+    Array.prototype.forEach.call(listEl.querySelectorAll(".row"), function (row) {
+      var item = findById(row.dataset.id);
+      var tub = row.querySelector(".tub");
+      if (!item || !tub) return;
+      var curingNow = isCuring(item);
+      if (curingNow === tub.classList.contains("curing")) return;
+      if (curingNow) {
+        tub.classList.add("curing");
+        tub.innerHTML = hourglassSVG();
+      } else {
+        tub.classList.remove("curing");
+        tub.dataset.state = item.state;
+        tub.innerHTML = tubSVG();
+      }
+    });
+  }
+
   function buildRow(item) {
     var li = document.createElement("li");
     li.className = "row";
@@ -240,7 +278,12 @@
     tub.className = "tub";
     tub.dataset.state = item.state;
     tub.setAttribute("aria-hidden", "true");
-    tub.innerHTML = tubSVG();
+    if (isCuring(item)) {
+      tub.classList.add("curing");
+      tub.innerHTML = hourglassSVG();
+    } else {
+      tub.innerHTML = tubSVG();
+    }
 
     var main = document.createElement("span");
     main.className = "row-main";
@@ -609,7 +652,7 @@
   function finishContainer(id) {
     var item = findById(id);
     if (!item) return;
-    var snap = { flavor: item.flavor, date_made: item.date_made, state: item.state, notes: item.notes || null };
+    var snap = { flavor: item.flavor, date_made: item.date_made, state: item.state, notes: item.notes || null, created_at: item.created_at || null };
     animateRemoval(id, function () {
       removeLocal(id);
       emptiesCount++;
@@ -711,8 +754,9 @@
         });
       },
       function () {
+        var nowISO = new Date().toISOString();
         rows.forEach(function (r) {
-          inventory.push({ id: makeId(), flavor: r.flavor, state: r.state, date_made: r.date_made, notes: r.notes });
+          inventory.push({ id: makeId(), flavor: r.flavor, state: r.state, date_made: r.date_made, notes: r.notes, created_at: nowISO });
         });
         emptiesCount = Math.max(0, emptiesCount - dec);
       }
@@ -812,7 +856,7 @@
 
   function undoFinish(a) {
     // restore container
-    inventory.push({ id: makeId(), flavor: a.snap.flavor, state: a.snap.state, date_made: a.snap.date_made, notes: a.snap.notes });
+    inventory.push({ id: makeId(), flavor: a.snap.flavor, state: a.snap.state, date_made: a.snap.date_made, notes: a.snap.notes, created_at: a.snap.created_at });
     emptiesCount = Math.max(0, emptiesCount - 1);
     // remove one local consumption for this flavor (most recent)
     for (var i = consumptions.length - 1; i >= 0; i--) {
@@ -821,7 +865,9 @@
     saveCache();
     render();
     if (usingSupabase) {
-      var ops = [db.from("containers").insert({ flavor: a.snap.flavor, state: a.snap.state, date_made: a.snap.date_made, notes: a.snap.notes })];
+      var rec = { flavor: a.snap.flavor, state: a.snap.state, date_made: a.snap.date_made, notes: a.snap.notes };
+      if (a.snap.created_at) rec.created_at = a.snap.created_at;
+      var ops = [db.from("containers").insert(rec)];
       ops.push(a.emptyId ? db.from("empties").delete().eq("id", a.emptyId) : decrementEmptiesRemote(1));
       ops.push(a.consId ? db.from("consumptions").delete().eq("id", a.consId) : deleteLatestConsumptionRemote(a.snap.flavor));
       Promise.all(ops).then(function () { fetchAll(); }).catch(function (e) { console.error("undo failed", e); });
@@ -907,4 +953,5 @@
 
   render();
   fetchAll();
+  setInterval(refreshCuringIcons, 60000); // flip curing icons at the 24h mark
 })();

@@ -153,6 +153,15 @@ html, body {
   width: 100%;
   height: 100%;
 }
+/* Curing (not-yet-ready) sand timer */
+.timer-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  color: var(--accent-strong);
+}
+.timer-svg rect,
+.timer-svg path { fill: currentColor; }
 .tub-svg .tub-outline {
   fill: none;
   stroke: var(--accent-ink);
