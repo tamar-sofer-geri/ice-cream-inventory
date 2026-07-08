@@ -17,6 +17,7 @@
   var CFG = {
     labelWidthMm: 30,   // across the roll (print width)
     labelHeightMm: 40,  // along the feed (print length)
+    rotate: 270,        // degrees clockwise to rotate the design before printing (0/90/180/270)
     align: "right",     // right-aligned roll on the M220
     density: 8,         // 1–8 (darkness)
     feedDots: 40,       // feed after printing
@@ -176,8 +177,32 @@
     return size;
   }
 
+  function rot() { return ((CFG.rotate % 360) + 360) % 360; }
+
+  // Rotate the (readable) design canvas into the physical print bitmap, which
+  // must stay labelWidthMm × labelHeightMm regardless of design orientation.
+  function orient(design) {
+    var r = rot();
+    if (r === 0) return design;
+    var pw = CFG.labelWidthMm * DPM, ph = CFG.labelHeightMm * DPM;
+    var out = document.createElement("canvas");
+    out.width = pw; out.height = ph;
+    var ctx = out.getContext("2d");
+    ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, pw, ph);
+    if (r === 90) { ctx.translate(pw, 0); ctx.rotate(Math.PI / 2); }
+    else if (r === 180) { ctx.translate(pw, ph); ctx.rotate(Math.PI); }
+    else if (r === 270) { ctx.translate(0, ph); ctx.rotate(-Math.PI / 2); }
+    ctx.drawImage(design, 0, 0);
+    return out;
+  }
+
   function renderLabel(container) {
-    var w = CFG.labelWidthMm * DPM, h = CFG.labelHeightMm * DPM;
+    // Draw in the reading orientation; swap dims for 90/270 so text is upright
+    // after orient() rotates it onto the print bitmap.
+    var pw = CFG.labelWidthMm * DPM, ph = CFG.labelHeightMm * DPM;
+    var r = rot();
+    var w = (r === 90 || r === 270) ? ph : pw;
+    var h = (r === 90 || r === 270) ? pw : ph;
     var canvas = document.createElement("canvas");
     canvas.width = w; canvas.height = h;
     var ctx = canvas.getContext("2d");
@@ -258,7 +283,7 @@
     try {
       await connect();
       log("Building label (" + CFG.labelWidthMm + "×" + CFG.labelHeightMm + "mm)…");
-      var raster = rasterize(renderLabel(container));
+      var raster = rasterize(orient(renderLabel(container)));
       log("Sending to printer…");
       await send(INIT); await delay(100);
       await send(HEAT(7, heatTimeFor(CFG.density), 2)); await delay(30);
@@ -295,5 +320,8 @@
     }
   }
 
-  window.GlideriaPrinter = { printLabel: printLabel, selfTest: selfTest, config: CFG, previewLabel: renderLabel };
+  window.GlideriaPrinter = {
+    printLabel: printLabel, selfTest: selfTest, config: CFG,
+    previewLabel: function (c) { return orient(renderLabel(c)); }
+  };
 })();
