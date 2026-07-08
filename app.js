@@ -512,6 +512,16 @@
 
         d.appendChild(top);
         d.appendChild(noteEdit);
+        if (window.GlideriaPrinter && navigator.bluetooth) {
+          var printBtn = document.createElement("button");
+          printBtn.type = "button";
+          printBtn.className = "print-btn";
+          printBtn.textContent = "🏷️ Print label";
+          (function (c) {
+            printBtn.addEventListener("click", function () { window.GlideriaPrinter.printLabel(c); });
+          })(item);
+          d.appendChild(printBtn);
+        }
         dates.appendChild(d);
       });
 
@@ -987,6 +997,11 @@
 
   addBtn.addEventListener("click", openModal);
   modal.addEventListener("click", function (e) { if (e.target.hasAttribute("data-close")) closeModal(); });
+
+  var printStatus = document.getElementById("print-status");
+  if (printStatus) printStatus.addEventListener("click", function (e) {
+    if (e.target.hasAttribute("data-print-close")) printStatus.hidden = true;
+  });
   document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !modal.hidden) closeModal(); });
 
   addForm.addEventListener("submit", function (e) {

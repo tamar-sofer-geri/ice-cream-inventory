@@ -400,6 +400,29 @@ html, body {
 }
 .note-edit::placeholder { color: var(--muted); }
 .note-edit:focus { outline: none; border-color: var(--accent-strong); background: #fff; }
+.print-btn {
+  align-self: flex-start;
+  background: var(--accent-strong);
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  min-height: 36px;
+}
+.print-btn:active { transform: scale(0.96); }
+.print-status-body {
+  margin-top: 4px;
+  max-height: 240px;
+  overflow-y: auto;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink);
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+}
+.print-status-body .print-err { color: #b3261e; }
 .date-edit {
   font-size: 13px;
   font-weight: 700;
