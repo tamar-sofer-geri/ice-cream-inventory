@@ -1045,6 +1045,61 @@
     window.scrollTo(0, 0);
   });
 
+  /* ---------- consumed-tubs list (from the Analytics "consumed" stat) ---------- */
+
+  var consumedModal = document.getElementById("consumed-modal");
+  var consumedListEl = document.getElementById("consumed-list");
+  var consumedTitleEl = document.getElementById("consumed-title");
+  var consumedBtn = document.getElementById("consumed-btn");
+
+  function formatConsumedAt(iso) {
+    var dt = new Date(iso);
+    if (isNaN(dt)) return "";
+    var opts = { month: "short", day: "numeric" };
+    if (dt.getFullYear() !== new Date().getFullYear()) opts.year = "numeric";
+    var date = dt.toLocaleDateString(undefined, opts);
+    var time = dt.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+    return date + " · " + time;
+  }
+
+  function openConsumedList() {
+    var sel = analyticsFlavor;
+    var cons = (sel === "all"
+      ? consumptions
+      : consumptions.filter(function (c) { return c.flavor.toLowerCase() === sel; })).slice();
+    cons.sort(function (a, b) { return new Date(b.consumed_at) - new Date(a.consumed_at); });
+
+    var flavorName = sel === "all" ? "" : (cons[0] ? cons[0].flavor : sel);
+    consumedTitleEl.textContent = (sel === "all" ? "Consumed tubs" : "Consumed " + flavorName) + " (" + cons.length + ")";
+
+    consumedListEl.innerHTML = "";
+    if (!cons.length) {
+      consumedListEl.innerHTML = '<p class="muted-row">No consumed tubs yet.</p>';
+    } else {
+      cons.forEach(function (c) {
+        var row = document.createElement("div");
+        row.className = "consumed-item";
+        var name = document.createElement("span");
+        name.className = "ci-flavor";
+        name.textContent = c.flavor;
+        var when = document.createElement("span");
+        when.className = "ci-when";
+        when.textContent = formatConsumedAt(c.consumed_at);
+        row.appendChild(name);
+        row.appendChild(when);
+        consumedListEl.appendChild(row);
+      });
+    }
+    consumedModal.hidden = false;
+  }
+
+  function closeConsumedList() { consumedModal.hidden = true; }
+
+  if (consumedBtn) consumedBtn.addEventListener("click", openConsumedList);
+  if (consumedModal) consumedModal.addEventListener("click", function (e) {
+    if (e.target.hasAttribute("data-consumed-close")) closeConsumedList();
+  });
+
   /* ---------- add modal ---------- */
 
   function openModal() {
@@ -1065,7 +1120,11 @@
     if (e.target.hasAttribute("data-print-close")) printStatus.hidden = true;
     if (e.target.hasAttribute("data-print-test") && window.GlideriaPrinter) window.GlideriaPrinter.selfTest();
   });
-  document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !modal.hidden) closeModal(); });
+  document.addEventListener("keydown", function (e) {
+    if (e.key !== "Escape") return;
+    if (!modal.hidden) closeModal();
+    if (consumedModal && !consumedModal.hidden) closeConsumedList();
+  });
 
   function readAddForm() {
     var flavor = flavorInput.value.trim();

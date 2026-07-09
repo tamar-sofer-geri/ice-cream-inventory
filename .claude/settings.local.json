@@ -4,7 +4,10 @@
       "Bash(sips -s format png \"/Users/tsofergeri/Downloads/IMG_0602.HEIC\" --out \"/private/tmp/claude-501/-Users-tsofergeri-Ice-cream/dcb5f0ea-6b5c-4953-b99a-1639f6552856/scratchpad/ref.png\" --resampleWidth 800)",
       "Bash(gh auth *)",
       "Bash(git config *)",
-      "Bash(which brew *)"
+      "Bash(which brew *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)"
     ]
   }
 }

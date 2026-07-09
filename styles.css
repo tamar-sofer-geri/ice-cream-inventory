@@ -442,6 +442,23 @@ html, body {
   font-family: ui-monospace, Menlo, Consolas, monospace;
 }
 .print-status-body .print-err { color: #b3261e; }
+.consumed-list {
+  margin-top: 6px;
+  max-height: 55vh;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+.consumed-item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 2px;
+  border-bottom: 1px solid var(--line, #eee);
+}
+.consumed-item:last-child { border-bottom: none; }
+.ci-flavor { font-weight: 700; color: var(--ink); }
+.ci-when { color: var(--muted); font-size: 13px; white-space: nowrap; }
 .date-edit {
   font-size: 13px;
   font-weight: 700;

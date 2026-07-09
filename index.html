@@ -13,7 +13,7 @@
   <link rel="apple-touch-icon" href="apple-touch-icon.png" />
   <link rel="icon" href="icon.svg" type="image/svg+xml" />
   <title>Geri's Glideria</title>
-  <link rel="stylesheet" href="styles.css?v=20" />
+  <link rel="stylesheet" href="styles.css?v=22" />
 </head>
 <body>
   <div class="app">
@@ -66,7 +66,7 @@
         </div>
 
         <div class="stat-grid">
-          <div class="stat"><span class="stat-num" id="stat-total">0</span><span class="stat-label">consumed (shown)</span></div>
+          <button class="stat stat-btn" type="button" id="consumed-btn" aria-label="See all consumed tubs"><span class="stat-num" id="stat-total">0</span><span class="stat-label">consumed (shown) ›</span></button>
           <button class="stat stat-btn" type="button" id="stock-btn" aria-label="Go to Flavors"><span class="stat-num" id="stat-stock">0</span><span class="stat-label">in stock now ›</span></button>
           <div class="stat"><span class="stat-num" id="stat-top">—</span><span class="stat-label">top flavor</span></div>
         </div>
@@ -164,11 +164,23 @@
     </div>
   </div>
 
+  <!-- Consumed tubs list (opened from the Analytics "consumed" stat) -->
+  <div id="consumed-modal" class="modal" hidden>
+    <div class="modal-backdrop" data-consumed-close></div>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="consumed-title">
+      <h2 id="consumed-title">Consumed tubs</h2>
+      <div id="consumed-list" class="consumed-list"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" data-consumed-close>Close</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Supabase client + QR generator (no build step) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
   <script src="config.js"></script>
   <script src="label-printer.js?v=28"></script>
-  <script src="app.js?v=22"></script>
+  <script src="app.js?v=24"></script>
 </body>
 </html>
