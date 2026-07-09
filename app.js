@@ -512,6 +512,8 @@
 
         d.appendChild(top);
         d.appendChild(noteEdit);
+        var rowBtns = document.createElement("div");
+        rowBtns.className = "sd-actions";
         if (window.GlideriaPrinter && navigator.bluetooth) {
           var printBtn = document.createElement("button");
           printBtn.type = "button";
@@ -520,8 +522,17 @@
           (function (c) {
             printBtn.addEventListener("click", function () { window.GlideriaPrinter.printLabel(c); });
           })(item);
-          d.appendChild(printBtn);
+          rowBtns.appendChild(printBtn);
         }
+        var delBtn = document.createElement("button");
+        delBtn.type = "button";
+        delBtn.className = "delete-btn";
+        delBtn.textContent = "🗑️ Delete tub";
+        (function (c) {
+          delBtn.addEventListener("click", function () { deleteContainer(c.id); });
+        })(item);
+        rowBtns.appendChild(delBtn);
+        d.appendChild(rowBtns);
         dates.appendChild(d);
       });
 
@@ -774,6 +785,30 @@
     }
   }
 
+  // Remove a tub outright (mistake, spoiled, tossed) WITHOUT logging a
+  // consumption or bumping the empties count — so it leaves analytics alone.
+  // Undoable, like the other actions.
+  function deleteContainer(id) {
+    var item = findById(id);
+    if (!item) return;
+    if (!window.confirm("Delete this " + item.flavor + " tub? It won't be counted as eaten.")) return;
+    var snap = { flavor: item.flavor, date_made: item.date_made, state: item.state, notes: item.notes || null, created_at: item.created_at || null };
+    animateRemoval(id, function () {
+      removeLocal(id);
+      saveCache();
+      render();
+      armUndo({ type: "delete", snap: snap });
+      if (usingSupabase) {
+        db.from("containers").delete().eq("id", id)
+          .then(function (r) {
+            showNote(r && r.error ? "Couldn't reach the server — changes may not have saved." : "");
+            fetchAll();
+          })
+          .catch(function (err) { console.error("delete failed", err); showNote("Couldn't reach the server — changes may not have saved."); });
+      }
+    });
+  }
+
   // Edit the "date made" of a specific container from the Inventory page.
   function updateContainerDate(id, dateISO) {
     var item = findById(id);
@@ -911,6 +946,8 @@
     pendingUndo = action;
     undoLabelEl.textContent = action.type === "finish"
       ? "Finished " + action.snap.flavor
+      : action.type === "delete"
+      ? "Deleted " + action.snap.flavor
       : "Marked half";
     undoBar.hidden = false;
     if (undoTimer) clearTimeout(undoTimer);
@@ -927,6 +964,18 @@
     if (!a) return;
     if (a.type === "half") undoHalf(a);
     else if (a.type === "finish") undoFinish(a);
+    else if (a.type === "delete") undoDelete(a);
+  }
+
+  function undoDelete(a) {
+    inventory.push({ id: makeId(), flavor: a.snap.flavor, state: a.snap.state, date_made: a.snap.date_made, notes: a.snap.notes, created_at: a.snap.created_at });
+    saveCache();
+    render();
+    if (usingSupabase) {
+      var rec = { flavor: a.snap.flavor, state: a.snap.state, date_made: a.snap.date_made, notes: a.snap.notes };
+      if (a.snap.created_at) rec.created_at = a.snap.created_at;
+      db.from("containers").insert(rec).then(function () { fetchAll(); }).catch(function (e) { console.error("undo delete failed", e); });
+    }
   }
 
   function undoHalf(a) {
