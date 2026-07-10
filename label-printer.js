@@ -264,21 +264,20 @@
 
   // A small filled ice-cream cone (scoop mound + waffle cone) centered at
   // (cx, cy). Solid black so it prints cleanly on the 1-bit thermal head.
-  // Outline ice-cream cone: a tall full scoop with a scalloped bottom that
-  // overhangs a long, narrow waffle cone with diagonal hatching. Stroked black
-  // paths on a white interior so it prints as clean line art on the M220.
+  // Outline-style ice-cream cone (scalloped scoop, rim, hatched waffle cone),
+  // matching the reference icon. Stroked black paths on a white interior so it
+  // prints as clean line art on the 1-bit thermal head.
   function drawConeIcon(ctx, cx, cy, size) {
     var H = size;
     var top = cy - H / 2, bot = cy + H / 2;
-    var sHalf = H * 0.30;
-    var topY = top + H * 0.01;          // dome top
-    var sideY = top + H * 0.22;         // scoop widest
-    var sBotY = top + H * 0.40;         // scalloped bottom edge
-    var rimY = top + H * 0.45;
-    var rimHalf = H * 0.255;
-    var coneTopHalf = H * 0.235;
+    var sHalf = H * 0.31;
+    var domeCy = top + sHalf;          // dome center; dome top sits at y = top
+    var sBotY = top + H * 0.44;         // scoop bottom (scalloped edge)
+    var rimY = sBotY + H * 0.02;
+    var rimHalf = H * 0.28;
+    var coneTopHalf = H * 0.25;
     var coneH = bot - rimY;
-    var lwThick = Math.max(1.5, H * 0.072);
+    var lwThick = Math.max(1.5, H * 0.075);
     var lwThin = Math.max(1, H * 0.05);
 
     ctx.save();
@@ -287,46 +286,36 @@
     ctx.lineJoin = "round";
     ctx.lineCap = "round";
 
-    // scoop: full rounded dome, scalloped bottom overhanging the rim
+    // scoop: full rounded dome on short sides, with a gently scalloped bottom
+    // that slightly overhangs the cone rim
     ctx.lineWidth = lwThick;
     ctx.beginPath();
-    ctx.moveTo(cx - sHalf, sideY);
-    ctx.bezierCurveTo(cx - sHalf, top + H * 0.05, cx - sHalf * 0.5, topY, cx, topY);
-    ctx.bezierCurveTo(cx + sHalf * 0.5, topY, cx + sHalf, top + H * 0.05, cx + sHalf, sideY);
-    ctx.bezierCurveTo(cx + sHalf, sideY + H * 0.06, cx + sHalf * 0.99, sBotY - H * 0.01, cx + sHalf * 0.9, sBotY);
-    var rx = cx + sHalf * 0.9, lx = cx - sHalf * 0.9, bw = (rx - lx) / 3;
-    for (var i = 0; i < 3; i++) {
-      var x1 = rx - i * bw, x2 = x1 - bw;
-      ctx.quadraticCurveTo((x1 + x2) / 2, sBotY + H * 0.055, x2, sBotY);
+    ctx.moveTo(cx - sHalf, sBotY);
+    ctx.lineTo(cx - sHalf, domeCy);
+    ctx.arc(cx, domeCy, sHalf, Math.PI, 2 * Math.PI);   // dome over the top
+    ctx.lineTo(cx + sHalf, sBotY);
+    var lobes = 3, bw = (2 * sHalf) / lobes;
+    for (var i = 0; i < lobes; i++) {
+      var x1 = cx + sHalf - i * bw, x2 = x1 - bw;
+      ctx.quadraticCurveTo((x1 + x2) / 2, sBotY + bw * 0.4, x2, sBotY);
     }
-    ctx.bezierCurveTo(cx - sHalf * 0.99, sBotY - H * 0.01, cx - sHalf, sideY + H * 0.06, cx - sHalf, sideY);
     ctx.closePath();
     ctx.stroke();
 
-    // inner wavy fold just above the rim
-    ctx.lineWidth = lwThick * 0.85;
-    var wY = rimY - H * 0.035;
-    ctx.beginPath();
-    ctx.moveTo(cx - rimHalf * 0.8, wY);
-    ctx.quadraticCurveTo(cx - rimHalf * 0.3, wY - H * 0.03, cx + H * 0.02, wY);
-    ctx.quadraticCurveTo(cx + rimHalf * 0.5, wY + H * 0.03, cx + rimHalf * 0.85, wY - H * 0.005);
-    ctx.stroke();
-
-    // rim: rounded bar (top of the cone), narrower than the scoop
-    ctx.lineWidth = lwThick;
+    // rim: rounded bar (the top of the cone), narrower than the scoop
     ctx.beginPath();
     ctx.moveTo(cx - rimHalf, rimY);
     ctx.lineTo(cx + rimHalf, rimY);
     ctx.stroke();
 
-    // long narrow cone down to a rounded point
+    // cone sides down to the point
     ctx.beginPath();
-    ctx.moveTo(cx - coneTopHalf, rimY + lwThick * 0.25);
+    ctx.moveTo(cx - coneTopHalf, rimY + lwThick * 0.2);
     ctx.lineTo(cx, bot);
-    ctx.lineTo(cx + coneTopHalf, rimY + lwThick * 0.25);
+    ctx.lineTo(cx + coneTopHalf, rimY + lwThick * 0.2);
     ctx.stroke();
 
-    // diagonal "/" hatch, clipped to the cone
+    // waffle hatch: parallel "/" diagonals, clipped to the cone triangle
     ctx.save();
     ctx.beginPath();
     ctx.moveTo(cx - coneTopHalf, rimY);
@@ -335,8 +324,8 @@
     ctx.closePath();
     ctx.clip();
     ctx.lineWidth = lwThin;
-    var step = H * 0.13;
-    for (var k = -6; k <= 4; k++) {
+    var step = H * 0.17;
+    for (var k = -5; k <= 5; k++) {
       var sx = cx + k * step;
       ctx.beginPath();
       ctx.moveTo(sx, bot);
