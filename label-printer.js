@@ -270,12 +270,12 @@
   function drawConeIcon(ctx, cx, cy, size) {
     var H = size;
     var top = cy - H / 2, bot = cy + H / 2;
-    var sHalf = H * 0.30;
-    var sTop = top + H * 0.02;
-    var rimY = top + H * 0.46;
-    var sBotY = rimY - H * 0.02;
-    var rimHalf = H * 0.32;
-    var coneTopHalf = H * 0.27;
+    var sHalf = H * 0.31;
+    var domeCy = top + sHalf;          // dome center; dome top sits at y = top
+    var sBotY = top + H * 0.44;         // scoop bottom (scalloped edge)
+    var rimY = sBotY + H * 0.02;
+    var rimHalf = H * 0.28;
+    var coneTopHalf = H * 0.25;
     var coneH = bot - rimY;
     var lwThick = Math.max(1.5, H * 0.075);
     var lwThin = Math.max(1, H * 0.05);
@@ -286,21 +286,23 @@
     ctx.lineJoin = "round";
     ctx.lineCap = "round";
 
-    // scoop: rounded dome with a 3-lobe scalloped bottom
+    // scoop: full rounded dome on short sides, with a gently scalloped bottom
+    // that slightly overhangs the cone rim
     ctx.lineWidth = lwThick;
     ctx.beginPath();
     ctx.moveTo(cx - sHalf, sBotY);
-    ctx.bezierCurveTo(cx - sHalf * 1.08, sTop + (sBotY - sTop) * 0.15, cx - sHalf * 0.55, sTop, cx, sTop);
-    ctx.bezierCurveTo(cx + sHalf * 0.55, sTop, cx + sHalf * 1.08, sTop + (sBotY - sTop) * 0.15, cx + sHalf, sBotY);
+    ctx.lineTo(cx - sHalf, domeCy);
+    ctx.arc(cx, domeCy, sHalf, Math.PI, 2 * Math.PI);   // dome over the top
+    ctx.lineTo(cx + sHalf, sBotY);
     var lobes = 3, bw = (2 * sHalf) / lobes;
     for (var i = 0; i < lobes; i++) {
       var x1 = cx + sHalf - i * bw, x2 = x1 - bw;
-      ctx.quadraticCurveTo((x1 + x2) / 2, sBotY + bw * 0.45, x2, sBotY);
+      ctx.quadraticCurveTo((x1 + x2) / 2, sBotY + bw * 0.4, x2, sBotY);
     }
     ctx.closePath();
     ctx.stroke();
 
-    // rim: rounded bar (the top of the cone) just below the scoop
+    // rim: rounded bar (the top of the cone), narrower than the scoop
     ctx.beginPath();
     ctx.moveTo(cx - rimHalf, rimY);
     ctx.lineTo(cx + rimHalf, rimY);
