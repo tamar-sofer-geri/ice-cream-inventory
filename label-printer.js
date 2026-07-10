@@ -381,10 +381,11 @@
     var dtSize = 30;
     if (dt.date) dtSize = Math.min(dtSize, fitFont(ctx, dt.date, dtW, dtSize, "bold"));
     if (dt.time) dtSize = Math.min(dtSize, fitFont(ctx, dt.time, dtW, dtSize, "bold"));
-    var iconH = CFG.showConeIcon ? Math.min(36, Math.round(dtW * 0.45)) : 0;
+    var iconH = CFG.showConeIcon ? Math.min(54, Math.round(dtW * 0.6)) : 0;
     var iconGap = iconH ? 6 : 0;
     var dtH = iconH + iconGap + (dt.date ? dtSize : 0) + (dt.time ? dtSize + gap : 0);
     var cursorY = qrDim ? Math.max(y, oy + Math.floor((qrDim - dtH) / 2)) : y + 6;
+    cursorY = Math.max(y, Math.min(cursorY, h - pad - dtH)); // keep the block on-label
     if (iconH) { drawConeIcon(ctx, dtcx, cursorY + iconH / 2, iconH); cursorY += iconH + iconGap; }
     ctx.textAlign = "center";
     setFont(ctx, dtSize, "bold");
