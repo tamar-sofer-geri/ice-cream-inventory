@@ -25,7 +25,8 @@
     density: 8,         // 1–8 (darkness)
     feedDots: 40,       // feed after printing
     mediaType: 0x0a,    // 0x0a = die-cut labels with gaps
-    includeQR: true
+    includeQR: true,
+    showConeIcon: true  // little ice-cream-cone icon above the date/time
   };
   var DPM = 8;                 // dots per mm (203 dpi)
   var HEAD_BYTES = 72;         // M220 print-head width in bytes (576 px)
@@ -261,6 +262,50 @@
     return out;
   }
 
+  // A small filled ice-cream cone (scoop mound + waffle cone) centered at
+  // (cx, cy). Solid black so it prints cleanly on the 1-bit thermal head.
+  function drawConeIcon(ctx, cx, cy, size) {
+    var H = size;
+    var top = cy - H / 2, bot = cy + H / 2;
+    var scoopR = H * 0.31;
+    var scoopCy = top + scoopR;                 // round scoop at the very top
+    var coneTopY = scoopCy + scoopR * 0.35;     // cone tucks just under the scoop
+    var coneHalfW = H * 0.29;
+    var coneH = bot - coneTopY;
+    ctx.save();
+    ctx.textAlign = "left";
+    ctx.fillStyle = "#000";
+
+    // waffle cone: wide triangle tapering to a point
+    ctx.beginPath();
+    ctx.moveTo(cx - coneHalfW, coneTopY);
+    ctx.lineTo(cx + coneHalfW, coneTopY);
+    ctx.lineTo(cx, bot);
+    ctx.closePath();
+    ctx.fill();
+
+    // waffle cross-hatch: thin white diagonals carved into the cone
+    ctx.save();
+    ctx.clip();
+    ctx.strokeStyle = "#fff";
+    ctx.lineWidth = Math.max(1, H * 0.045);
+    var step = H * 0.15;
+    ctx.beginPath();
+    for (var i = -4; i <= 4; i++) {
+      var x = cx + i * step;
+      ctx.moveTo(x, coneTopY); ctx.lineTo(x + coneH, bot);   // down-right
+      ctx.moveTo(x, coneTopY); ctx.lineTo(x - coneH, bot);   // down-left
+    }
+    ctx.stroke();
+    ctx.restore();
+
+    // scoop: a single round ball, a touch wider than the cone
+    ctx.beginPath();
+    ctx.arc(cx, scoopCy, scoopR, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
   function renderLabel(container) {
     // Draw in the reading orientation; swap dims for 90/270 so text is upright
     // after orient() rotates it onto the print bitmap.
@@ -298,18 +343,22 @@
     var y = pad;
     for (var i = 0; i < fl.lines.length; i++) { ctx.fillText(fl.lines[i], w / 2, y); y += fl.size + gap; }
 
-    // Date + time: bottom-left, in the space beside the QR.
+    // Cone icon + date + time: bottom-left, in the space beside the QR.
     var dt = shortDateTime(container);
     var dtW = (qrDim ? ox - pad * 2 : w - pad * 2);
     var dtcx = pad + dtW / 2;
     var dtSize = 30;
     if (dt.date) dtSize = Math.min(dtSize, fitFont(ctx, dt.date, dtW, dtSize, "bold"));
     if (dt.time) dtSize = Math.min(dtSize, fitFont(ctx, dt.time, dtW, dtSize, "bold"));
-    var dtH = (dt.date ? dtSize : 0) + (dt.time ? dtSize + gap : 0);
-    var dty = qrDim ? Math.max(y, oy + Math.floor((qrDim - dtH) / 2)) : y + 6;
+    var iconH = CFG.showConeIcon ? Math.min(36, Math.round(dtW * 0.45)) : 0;
+    var iconGap = iconH ? 6 : 0;
+    var dtH = iconH + iconGap + (dt.date ? dtSize : 0) + (dt.time ? dtSize + gap : 0);
+    var cursorY = qrDim ? Math.max(y, oy + Math.floor((qrDim - dtH) / 2)) : y + 6;
+    if (iconH) { drawConeIcon(ctx, dtcx, cursorY + iconH / 2, iconH); cursorY += iconH + iconGap; }
+    ctx.textAlign = "center";
     setFont(ctx, dtSize, "bold");
-    if (dt.date) { ctx.fillText(dt.date, dtcx, dty); dty += dtSize + gap; }
-    if (dt.time) { ctx.fillText(dt.time, dtcx, dty); }
+    if (dt.date) { ctx.fillText(dt.date, dtcx, cursorY); cursorY += dtSize + gap; }
+    if (dt.time) { ctx.fillText(dt.time, dtcx, cursorY); }
 
     if (qr) {
       ctx.fillStyle = "#000";
