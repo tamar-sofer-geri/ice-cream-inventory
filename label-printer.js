@@ -264,45 +264,74 @@
 
   // A small filled ice-cream cone (scoop mound + waffle cone) centered at
   // (cx, cy). Solid black so it prints cleanly on the 1-bit thermal head.
+  // Outline-style ice-cream cone (scalloped scoop, rim, hatched waffle cone),
+  // matching the reference icon. Stroked black paths on a white interior so it
+  // prints as clean line art on the 1-bit thermal head.
   function drawConeIcon(ctx, cx, cy, size) {
     var H = size;
     var top = cy - H / 2, bot = cy + H / 2;
-    var scoopR = H * 0.31;
-    var scoopCy = top + scoopR;                 // round scoop at the very top
-    var coneTopY = scoopCy + scoopR * 0.35;     // cone tucks just under the scoop
-    var coneHalfW = H * 0.29;
-    var coneH = bot - coneTopY;
+    var sHalf = H * 0.30;
+    var sTop = top + H * 0.02;
+    var rimY = top + H * 0.46;
+    var sBotY = rimY - H * 0.02;
+    var rimHalf = H * 0.32;
+    var coneTopHalf = H * 0.27;
+    var coneH = bot - rimY;
+    var lwThick = Math.max(1.5, H * 0.075);
+    var lwThin = Math.max(1, H * 0.05);
+
     ctx.save();
     ctx.textAlign = "left";
-    ctx.fillStyle = "#000";
+    ctx.strokeStyle = "#000";
+    ctx.lineJoin = "round";
+    ctx.lineCap = "round";
 
-    // waffle cone: wide triangle tapering to a point
+    // scoop: rounded dome with a 3-lobe scalloped bottom
+    ctx.lineWidth = lwThick;
     ctx.beginPath();
-    ctx.moveTo(cx - coneHalfW, coneTopY);
-    ctx.lineTo(cx + coneHalfW, coneTopY);
-    ctx.lineTo(cx, bot);
-    ctx.closePath();
-    ctx.fill();
-
-    // waffle cross-hatch: thin white diagonals carved into the cone
-    ctx.save();
-    ctx.clip();
-    ctx.strokeStyle = "#fff";
-    ctx.lineWidth = Math.max(1, H * 0.045);
-    var step = H * 0.15;
-    ctx.beginPath();
-    for (var i = -4; i <= 4; i++) {
-      var x = cx + i * step;
-      ctx.moveTo(x, coneTopY); ctx.lineTo(x + coneH, bot);   // down-right
-      ctx.moveTo(x, coneTopY); ctx.lineTo(x - coneH, bot);   // down-left
+    ctx.moveTo(cx - sHalf, sBotY);
+    ctx.bezierCurveTo(cx - sHalf * 1.08, sTop + (sBotY - sTop) * 0.15, cx - sHalf * 0.55, sTop, cx, sTop);
+    ctx.bezierCurveTo(cx + sHalf * 0.55, sTop, cx + sHalf * 1.08, sTop + (sBotY - sTop) * 0.15, cx + sHalf, sBotY);
+    var lobes = 3, bw = (2 * sHalf) / lobes;
+    for (var i = 0; i < lobes; i++) {
+      var x1 = cx + sHalf - i * bw, x2 = x1 - bw;
+      ctx.quadraticCurveTo((x1 + x2) / 2, sBotY + bw * 0.45, x2, sBotY);
     }
+    ctx.closePath();
     ctx.stroke();
+
+    // rim: rounded bar (the top of the cone) just below the scoop
+    ctx.beginPath();
+    ctx.moveTo(cx - rimHalf, rimY);
+    ctx.lineTo(cx + rimHalf, rimY);
+    ctx.stroke();
+
+    // cone sides down to the point
+    ctx.beginPath();
+    ctx.moveTo(cx - coneTopHalf, rimY + lwThick * 0.2);
+    ctx.lineTo(cx, bot);
+    ctx.lineTo(cx + coneTopHalf, rimY + lwThick * 0.2);
+    ctx.stroke();
+
+    // waffle hatch: parallel "/" diagonals, clipped to the cone triangle
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(cx - coneTopHalf, rimY);
+    ctx.lineTo(cx, bot);
+    ctx.lineTo(cx + coneTopHalf, rimY);
+    ctx.closePath();
+    ctx.clip();
+    ctx.lineWidth = lwThin;
+    var step = H * 0.17;
+    for (var k = -5; k <= 5; k++) {
+      var sx = cx + k * step;
+      ctx.beginPath();
+      ctx.moveTo(sx, bot);
+      ctx.lineTo(sx + coneH, bot - coneH);
+      ctx.stroke();
+    }
     ctx.restore();
 
-    // scoop: a single round ball, a touch wider than the cone
-    ctx.beginPath();
-    ctx.arc(cx, scoopCy, scoopR, 0, Math.PI * 2);
-    ctx.fill();
     ctx.restore();
   }
 
