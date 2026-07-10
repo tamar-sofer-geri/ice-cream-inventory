@@ -18,6 +18,9 @@
   var isDemo = false;
   try { isDemo = new URLSearchParams(location.search).get("demo") === "1"; } catch (e) {}
   var CACHE_KEY = isDemo ? "glideriaDemoCache" : "glideriaCache";
+  // Flavors the user swiped away while at 0 stock. Kept per-device so their
+  // consumption history (and analytics) stays intact; they reappear if restocked.
+  var HIDDEN_KEY = isDemo ? "glideriaDemoHidden" : "glideriaHidden";
   var usingSupabase = !isDemo && !!(cfg.supabaseUrl && cfg.supabaseAnonKey && window.supabase);
   var db = usingSupabase
     ? window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey)
@@ -63,6 +66,7 @@
   var emptiesCount = 0;
   var consumptions = [];
   var inventory = loadCache(); // also sets emptiesCount + consumptions
+  var hiddenFlavors = loadHidden();
   var currentView = "containers";
   var expanded = {};
   var analyticsPeriod = "week";
@@ -226,6 +230,25 @@
         containers: inventory, empties: emptiesCount, consumptions: consumptions
       }));
     } catch (e) { /* ignore */ }
+  }
+
+  function loadHidden() {
+    try {
+      var raw = window.localStorage.getItem(HIDDEN_KEY);
+      var arr = raw ? JSON.parse(raw) : [];
+      var map = {};
+      if (Array.isArray(arr)) arr.forEach(function (k) { map[String(k).toLowerCase()] = true; });
+      return map;
+    } catch (e) { return {}; }
+  }
+  function saveHidden() {
+    try { window.localStorage.setItem(HIDDEN_KEY, JSON.stringify(Object.keys(hiddenFlavors))); } catch (e) { /* ignore */ }
+  }
+  function hideFlavor(key, flavorName) {
+    hiddenFlavors[key] = true;
+    saveHidden();
+    render();
+    armUndo({ type: "hide", key: key, snap: { flavor: flavorName } });
   }
 
   /* ---------- data access ---------- */
@@ -403,18 +426,67 @@
     return groups;
   }
 
+  // Swipe an out-of-stock flavor to the right to hide it from Inventory.
+  function attachSwipeToDelete(li, head, key, flavorName) {
+    var startX = 0, startY = 0, dx = 0, active = false, decided = false, horizontal = false;
+    head.style.touchAction = "pan-y";
+    function reset() {
+      head.style.transition = "";
+      head.style.transform = "";
+      li.classList.remove("swiping");
+      li.style.removeProperty("--swipe-opacity");
+    }
+    head.addEventListener("pointerdown", function (e) {
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      active = true; decided = false; horizontal = false; dx = 0;
+      startX = e.clientX; startY = e.clientY;
+    });
+    head.addEventListener("pointermove", function (e) {
+      if (!active) return;
+      dx = e.clientX - startX;
+      var dy = e.clientY - startY;
+      if (!decided) {
+        if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+        decided = true;
+        horizontal = Math.abs(dx) > Math.abs(dy);
+        if (horizontal) { try { head.setPointerCapture(e.pointerId); } catch (er) {} }
+      }
+      if (!horizontal) { active = false; return; } // vertical → let the page scroll
+      if (dx < 0) dx = 0;
+      head.style.transform = "translateX(" + dx + "px)";
+      li.classList.add("swiping");
+      li.style.setProperty("--swipe-opacity", Math.min(1, dx / 100));
+    });
+    head.addEventListener("pointerup", function () {
+      if (!active) return;
+      active = false;
+      if (horizontal && dx > 90) {
+        head.style.transition = "transform .15s ease";
+        head.style.transform = "translateX(110%)";
+        setTimeout(function () { hideFlavor(key, flavorName); }, 150);
+      } else {
+        reset();
+      }
+    });
+    head.addEventListener("pointercancel", function () { active = false; reset(); });
+  }
+
   function renderInventory(sorted) {
     // Flavors currently in stock...
-    var byKey = {}, order = [];
+    var byKey = {}, order = [], hiddenChanged = false;
     groupByFlavor(sorted).forEach(function (g) {
       var key = g.flavor.toLowerCase();
       byKey[key] = { flavor: g.flavor, items: g.items };
       order.push(key);
+      // A flavor that's back in stock should reappear: un-hide it.
+      if (hiddenFlavors[key]) { delete hiddenFlavors[key]; hiddenChanged = true; }
     });
-    // ...plus flavors we've made before, so they stay on the list at 0.
+    if (hiddenChanged) saveHidden();
+    // ...plus flavors we've made before, so they stay on the list at 0 —
+    // unless the user has hidden them.
     consumptions.forEach(function (c) {
       var key = c.flavor.toLowerCase();
-      if (!(key in byKey)) { byKey[key] = { flavor: c.flavor, items: [] }; order.push(key); }
+      if (!(key in byKey) && !hiddenFlavors[key]) { byKey[key] = { flavor: c.flavor, items: [] }; order.push(key); }
     });
     var groups = order.map(function (k) { return byKey[k]; })
       .sort(function (a, b) { return a.flavor.toLowerCase().localeCompare(b.flavor.toLowerCase()); });
@@ -467,6 +539,8 @@
         });
       } else {
         head.classList.add("no-expand");
+        li.classList.add("has-swipe");
+        attachSwipeToDelete(li, head, key, g.flavor);
       }
 
       var dates = document.createElement("ul");
@@ -948,6 +1022,8 @@
       ? "Finished " + action.snap.flavor
       : action.type === "delete"
       ? "Deleted " + action.snap.flavor
+      : action.type === "hide"
+      ? "Hid " + action.snap.flavor
       : "Marked half";
     undoBar.hidden = false;
     if (undoTimer) clearTimeout(undoTimer);
@@ -965,6 +1041,13 @@
     if (a.type === "half") undoHalf(a);
     else if (a.type === "finish") undoFinish(a);
     else if (a.type === "delete") undoDelete(a);
+    else if (a.type === "hide") undoHide(a);
+  }
+
+  function undoHide(a) {
+    delete hiddenFlavors[a.key];
+    saveHidden();
+    render();
   }
 
   function undoDelete(a) {

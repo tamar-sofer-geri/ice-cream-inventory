@@ -336,6 +336,26 @@ html, body {
   line-height: 1;
 }
 .summary-head.no-expand { cursor: default; }
+/* Swipe-right-to-hide for out-of-stock flavors */
+.summary-item.has-swipe { position: relative; background: #c0392b; }
+.summary-item.has-swipe::before {
+  content: "🗑️ Hide";
+  position: absolute;
+  left: 16px; top: 0; bottom: 0;
+  display: flex;
+  align-items: center;
+  color: #fff;
+  font-weight: 700;
+  font-size: 14px;
+  opacity: var(--swipe-opacity, 0);
+  pointer-events: none;
+}
+.summary-item.has-swipe .summary-head {
+  position: relative;
+  z-index: 1;
+  background: var(--card);
+  touch-action: pan-y;
+}
 .count-tub-svg {
   display: block;
   width: 100%;
