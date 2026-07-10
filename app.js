@@ -244,9 +244,21 @@
   function saveHidden() {
     try { window.localStorage.setItem(HIDDEN_KEY, JSON.stringify(Object.keys(hiddenFlavors))); } catch (e) { /* ignore */ }
   }
-  function hideFlavor(key, flavorName) {
-    hiddenFlavors[key] = true;
+  // Set/clear a flavor's hidden state locally + (when online) in the synced
+  // hidden_flavors table so it carries across devices.
+  function setHidden(key, hidden) {
+    if (hidden) hiddenFlavors[key] = true; else delete hiddenFlavors[key];
     saveHidden();
+    if (usingSupabase) {
+      var q = hidden
+        ? db.from("hidden_flavors").upsert({ flavor: key }, { onConflict: "flavor" })
+        : db.from("hidden_flavors").delete().eq("flavor", key);
+      q.then(function (r) { if (r && r.error) console.warn("hidden sync failed", r.error); },
+             function (e) { console.warn("hidden sync failed", e); });
+    }
+  }
+  function hideFlavor(key, flavorName) {
+    setHidden(key, true);
     render();
     armUndo({ type: "hide", key: key, snap: { flavor: flavorName } });
   }
@@ -258,16 +270,24 @@
     return Promise.all([
       db.from("containers").select("*"),
       db.from("empties").select("*", { count: "exact", head: true }),
-      db.from("consumptions").select("flavor, date_made, consumed_at")
+      db.from("consumptions").select("id, flavor, date_made, consumed_at"),
+      db.from("hidden_flavors").select("flavor")
     ]).then(function (res) {
-      var c = res[0], e = res[1], k = res[2];
+      var c = res[0], e = res[1], k = res[2], h = res[3];
       if (c.error) throw c.error;
       inventory = c.data || [];
       if (!e.error && typeof e.count === "number") emptiesCount = e.count;
       if (!k.error && Array.isArray(k.data)) {
         consumptions = k.data.map(function (r) {
-          return { id: makeId(), flavor: r.flavor, date_made: r.date_made, consumed_at: r.consumed_at };
+          return { id: r.id, flavor: r.flavor, date_made: r.date_made, consumed_at: r.consumed_at };
         });
+      }
+      // hidden_flavors is optional — if the table doesn't exist yet, keep the
+      // locally-cached set so nothing breaks before the SQL is run.
+      if (h && !h.error && Array.isArray(h.data)) {
+        hiddenFlavors = {};
+        h.data.forEach(function (r) { hiddenFlavors[String(r.flavor).toLowerCase()] = true; });
+        saveHidden();
       }
       saveCache();
       showNote("");
@@ -473,15 +493,14 @@
 
   function renderInventory(sorted) {
     // Flavors currently in stock...
-    var byKey = {}, order = [], hiddenChanged = false;
+    var byKey = {}, order = [];
     groupByFlavor(sorted).forEach(function (g) {
       var key = g.flavor.toLowerCase();
       byKey[key] = { flavor: g.flavor, items: g.items };
       order.push(key);
-      // A flavor that's back in stock should reappear: un-hide it.
-      if (hiddenFlavors[key]) { delete hiddenFlavors[key]; hiddenChanged = true; }
+      // A flavor that's back in stock should reappear: un-hide it (syncs).
+      if (hiddenFlavors[key]) setHidden(key, false);
     });
-    if (hiddenChanged) saveHidden();
     // ...plus flavors we've made before, so they stay on the list at 0 —
     // unless the user has hidden them.
     consumptions.forEach(function (c) {
@@ -492,7 +511,7 @@
       .sort(function (a, b) { return a.flavor.toLowerCase().localeCompare(b.flavor.toLowerCase()); });
 
     summaryEl.innerHTML = "";
-    summaryEmptyEl.hidden = groups.length > 0;
+    summaryEmptyEl.hidden = groups.length > 0 || consumptions.length > 0;
 
     groups.forEach(function (g) {
       var li = document.createElement("li");
@@ -614,6 +633,69 @@
       li.appendChild(dates);
       summaryEl.appendChild(li);
     });
+
+    renderConsumedSection();
+  }
+
+  // Collapsible "Consumed" row at the bottom of Inventory: every finished tub
+  // with a "Return to shelf" button to undo an accidental consumption.
+  function renderConsumedSection() {
+    if (!consumptions.length) return;
+    var li = document.createElement("li");
+    li.className = "summary-item consumed-section";
+    var open = !!expanded.__consumed__;
+    if (open) li.classList.add("open");
+
+    var head = document.createElement("button");
+    head.type = "button";
+    head.className = "summary-head";
+    head.setAttribute("aria-expanded", open ? "true" : "false");
+    head.setAttribute("aria-label", consumptions.length + " consumed tubs");
+
+    var count = document.createElement("span");
+    count.className = "summary-count consumed-count";
+    count.setAttribute("aria-hidden", "true");
+    count.textContent = consumptions.length;
+
+    var label = document.createElement("span");
+    label.className = "summary-flavor";
+    label.textContent = "Consumed";
+
+    var caret = document.createElement("span");
+    caret.className = "summary-caret";
+    caret.setAttribute("aria-hidden", "true");
+    caret.textContent = "›";
+
+    head.appendChild(count); head.appendChild(label); head.appendChild(caret);
+    head.addEventListener("click", function () {
+      expanded.__consumed__ = !expanded.__consumed__;
+      li.classList.toggle("open", expanded.__consumed__);
+      head.setAttribute("aria-expanded", expanded.__consumed__ ? "true" : "false");
+    });
+
+    var log = document.createElement("ul");
+    log.className = "summary-dates consumed-log";
+    consumptions.slice()
+      .sort(function (a, b) { return new Date(b.consumed_at) - new Date(a.consumed_at); })
+      .forEach(function (cons) {
+        var row = document.createElement("li");
+        row.className = "consumed-log-row";
+        var info = document.createElement("div");
+        info.className = "clr-info";
+        var f = document.createElement("span"); f.className = "clr-flavor"; f.textContent = cons.flavor;
+        var w = document.createElement("span"); w.className = "clr-when"; w.textContent = formatConsumedAt(cons.consumed_at);
+        info.appendChild(f); info.appendChild(w);
+        var back = document.createElement("button");
+        back.type = "button";
+        back.className = "return-btn";
+        back.textContent = "↩︎ Return to shelf";
+        (function (c) { back.addEventListener("click", function () { returnToShelf(c); }); })(cons);
+        row.appendChild(info); row.appendChild(back);
+        log.appendChild(row);
+      });
+
+    li.appendChild(head); li.appendChild(log);
+    summaryEl.appendChild(li);
   }
 
   function refreshSuggestions() {
@@ -859,6 +941,29 @@
     }
   }
 
+  // Un-consume: put a tub back on the shelf and drop its consumption record.
+  // Reverses a "finish" (adds a full tub, removes the empty it created).
+  function returnToShelf(cons) {
+    for (var i = consumptions.length - 1; i >= 0; i--) {
+      if (consumptions[i].id === cons.id) { consumptions.splice(i, 1); break; }
+    }
+    inventory.push({ id: makeId(), flavor: cons.flavor, state: "full", date_made: cons.date_made, notes: null, created_at: new Date().toISOString() });
+    emptiesCount = Math.max(0, emptiesCount - 1);
+    saveCache();
+    render();
+    if (usingSupabase) {
+      Promise.all([
+        db.from("containers").insert({ flavor: cons.flavor, state: "full", date_made: cons.date_made }),
+        db.from("consumptions").delete().eq("id", cons.id),
+        decrementEmptiesRemote(1)
+      ]).then(function (r) {
+        var bad = r.filter(function (x) { return x && x.error; })[0];
+        showNote(bad ? "Couldn't reach the server — changes may not have saved." : "");
+        fetchAll();
+      }).catch(function (e) { console.error("return to shelf failed", e); showNote("Couldn't reach the server — changes may not have saved."); });
+    }
+  }
+
   // Remove a tub outright (mistake, spoiled, tossed) WITHOUT logging a
   // consumption or bumping the empties count — so it leaves analytics alone.
   // Undoable, like the other actions.
@@ -1045,8 +1150,7 @@
   }
 
   function undoHide(a) {
-    delete hiddenFlavors[a.key];
-    saveHidden();
+    setHidden(a.key, false);
     render();
   }
 
@@ -1247,6 +1351,7 @@
       .on("postgres_changes", { event: "*", schema: "public", table: "containers" }, function () { fetchAll(); })
       .on("postgres_changes", { event: "*", schema: "public", table: "empties" }, function () { fetchAll(); })
       .on("postgres_changes", { event: "*", schema: "public", table: "consumptions" }, function () { fetchAll(); })
+      .on("postgres_changes", { event: "*", schema: "public", table: "hidden_flavors" }, function () { fetchAll(); })
       .subscribe();
 
     document.addEventListener("visibilitychange", function () { if (!document.hidden) fetchAll(); });

@@ -388,6 +388,44 @@ html, body {
 }
 .summary-item.open .summary-caret { transform: rotate(90deg); }
 
+/* Consumed section at the bottom of Inventory */
+.consumed-section .summary-flavor { color: var(--muted); }
+.consumed-count {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--line);
+  color: var(--accent-ink);
+  font-weight: 800;
+  font-size: 15px;
+}
+.consumed-log { padding-left: 14px; }
+.consumed-log-row {
+  flex-direction: row !important;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.clr-info { display: flex; flex-direction: column; min-width: 0; }
+.clr-flavor { font-weight: 700; color: var(--ink); }
+.clr-when { color: var(--muted); font-size: 13px; }
+.return-btn {
+  flex: 0 0 auto;
+  background: var(--accent-strong);
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  min-height: 36px;
+}
+.return-btn:active { transform: scale(0.96); }
+
 .summary-dates {
   list-style: none;
   margin: 0;
