@@ -1171,6 +1171,13 @@
   function maybeHandleDeepLink() {
     if (!deepLinkTub || deepLinkHandled) return;
     deepLinkHandled = true;
+    // Drop ?tub= from the address bar so refreshing the page doesn't re-run
+    // the deep link (and re-show "isn't in stock" for stale QR labels).
+    try {
+      var u = new URL(location.href);
+      u.searchParams.delete("tub");
+      history.replaceState(null, "", u.pathname + u.search + u.hash);
+    } catch (e) { /* ignore */ }
     switchView("containers");
     if (!findById(deepLinkTub)) {
       showNote("That tub isn't in stock anymore 🍦");
