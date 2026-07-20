@@ -96,6 +96,10 @@
   function makeId() {
     return "c" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   }
+  // Real Supabase rows use UUID ids; local optimistic rows use makeId().
+  function isUuid(s) {
+    return typeof s === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
+  }
 
   function byFlavorThenDate(a, b) {
     var f = a.flavor.toLowerCase().localeCompare(b.flavor.toLowerCase());
@@ -892,20 +896,24 @@
   function finishContainer(id) {
     var item = findById(id);
     if (!item) return;
-    var snap = { flavor: item.flavor, date_made: item.date_made, state: item.state, notes: item.notes || null, created_at: item.created_at || null };
+    var snap = { id: item.id, flavor: item.flavor, date_made: item.date_made, state: item.state, notes: item.notes || null, created_at: item.created_at || null };
     animateRemoval(id, function () {
       removeLocal(id);
       emptiesCount++;
-      consumptions.push({ id: makeId(), flavor: snap.flavor, date_made: snap.date_made, consumed_at: new Date().toISOString() });
+      // Log the consumption under the tub's own id so "return to shelf" can
+      // restore the same id and the printed QR code keeps working.
+      consumptions.push({ id: id, flavor: snap.flavor, date_made: snap.date_made, consumed_at: new Date().toISOString() });
       saveCache();
       render();
       armUndo({ type: "finish", snap: snap, emptyId: null, consId: null });
 
       if (usingSupabase) {
+        var consRec = { flavor: snap.flavor, date_made: snap.date_made };
+        if (isUuid(id)) consRec.id = id;
         Promise.all([
           db.from("containers").delete().eq("id", id),
           db.from("empties").insert({}).select("id"),
-          db.from("consumptions").insert({ flavor: snap.flavor, date_made: snap.date_made }).select("id")
+          db.from("consumptions").insert(consRec).select("id")
         ]).then(function (r) {
           if (r[0] && r[0].error) showNote("Couldn't reach the server — changes may not have saved.");
           else showNote("");
@@ -947,13 +955,16 @@
     for (var i = consumptions.length - 1; i >= 0; i--) {
       if (consumptions[i].id === cons.id) { consumptions.splice(i, 1); break; }
     }
-    inventory.push({ id: makeId(), flavor: cons.flavor, state: "full", date_made: cons.date_made, notes: null, created_at: new Date().toISOString() });
+    // Reuse the original id (= the consumption's id) so the printed QR still resolves.
+    inventory.push({ id: cons.id, flavor: cons.flavor, state: "full", date_made: cons.date_made, notes: null, created_at: new Date().toISOString() });
     emptiesCount = Math.max(0, emptiesCount - 1);
     saveCache();
     render();
     if (usingSupabase) {
+      var contRec = { flavor: cons.flavor, state: "full", date_made: cons.date_made };
+      if (isUuid(cons.id)) contRec.id = cons.id;
       Promise.all([
-        db.from("containers").insert({ flavor: cons.flavor, state: "full", date_made: cons.date_made }),
+        db.from("containers").insert(contRec),
         db.from("consumptions").delete().eq("id", cons.id),
         decrementEmptiesRemote(1)
       ]).then(function (r) {
@@ -1177,8 +1188,8 @@
   }
 
   function undoFinish(a) {
-    // restore container
-    inventory.push({ id: makeId(), flavor: a.snap.flavor, state: a.snap.state, date_made: a.snap.date_made, notes: a.snap.notes, created_at: a.snap.created_at });
+    // restore container with its original id so the QR code still resolves
+    inventory.push({ id: a.snap.id || makeId(), flavor: a.snap.flavor, state: a.snap.state, date_made: a.snap.date_made, notes: a.snap.notes, created_at: a.snap.created_at });
     emptiesCount = Math.max(0, emptiesCount - 1);
     // remove one local consumption for this flavor (most recent)
     for (var i = consumptions.length - 1; i >= 0; i--) {
@@ -1189,6 +1200,7 @@
     if (usingSupabase) {
       var rec = { flavor: a.snap.flavor, state: a.snap.state, date_made: a.snap.date_made, notes: a.snap.notes };
       if (a.snap.created_at) rec.created_at = a.snap.created_at;
+      if (isUuid(a.snap.id)) rec.id = a.snap.id;
       var ops = [db.from("containers").insert(rec)];
       ops.push(a.emptyId ? db.from("empties").delete().eq("id", a.emptyId) : decrementEmptiesRemote(1));
       ops.push(a.consId ? db.from("consumptions").delete().eq("id", a.consId) : deleteLatestConsumptionRemote(a.snap.flavor));

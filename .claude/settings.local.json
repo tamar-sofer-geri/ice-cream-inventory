@@ -7,7 +7,10 @@
       "Bash(which brew *)",
       "Bash(git add *)",
       "Bash(git commit *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(curl -s https://yyolpujtmlwmvfetbnld.supabase.co/rest/v1/hidden_flavors?select=flavor -H 'apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl5b2xwdWp0bWx3bXZmZXRibmxkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMzNjg4NjQsImV4cCI6MjA5ODk0NDg2NH0.oMPDHZlT4xxP2IuwniHu2HUNNtsi6QO5n9_i3wDJX84' -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl5b2xwdWp0bWx3bXZmZXRibmxkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMzNjg4NjQsImV4cCI6MjA5ODk0NDg2NH0.oMPDHZlT4xxP2IuwniHu2HUNNtsi6QO5n9_i3wDJX84')",
+      "Bash(curl -s -X POST https://yyolpujtmlwmvfetbnld.supabase.co/rest/v1/hidden_flavors -H 'apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl5b2xwdWp0bWx3bXZmZXRibmxkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMzNjg4NjQsImV4cCI6MjA5ODk0NDg2NH0.oMPDHZlT4xxP2IuwniHu2HUNNtsi6QO5n9_i3wDJX84' -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl5b2xwdWp0bWx3bXZmZXRibmxkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMzNjg4NjQsImV4cCI6MjA5ODk0NDg2NH0.oMPDHZlT4xxP2IuwniHu2HUNNtsi6QO5n9_i3wDJX84' -H 'Content-Type: application/json' -H 'Prefer: return=representation' -d '{\"flavor\":\"__synctest__\"}')",
+      "Bash(curl -s -X DELETE https://yyolpujtmlwmvfetbnld.supabase.co/rest/v1/hidden_flavors?flavor=eq.__synctest__ -H 'apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl5b2xwdWp0bWx3bXZmZXRibmxkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMzNjg4NjQsImV4cCI6MjA5ODk0NDg2NH0.oMPDHZlT4xxP2IuwniHu2HUNNtsi6QO5n9_i3wDJX84' -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl5b2xwdWp0bWx3bXZmZXRibmxkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMzNjg4NjQsImV4cCI6MjA5ODk0NDg2NH0.oMPDHZlT4xxP2IuwniHu2HUNNtsi6QO5n9_i3wDJX84' -H 'Prefer: return=representation')"
     ]
   }
 }
