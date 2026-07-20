@@ -101,9 +101,22 @@
     return typeof s === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
   }
 
+  // Tubs are auto-numbered per flavor ("Vanilla 1", "Vanilla 2", …). The
+  // trailing number identifies the physical tub; grouping, analytics, and
+  // suggestions all use the base flavor name.
+  function baseFlavor(name) {
+    return String(name || "").replace(/\s+\d+$/, "");
+  }
+  function flavorNumber(name) {
+    var m = String(name || "").match(/\s(\d+)$/);
+    return m ? parseInt(m[1], 10) : null;
+  }
+
   function byFlavorThenDate(a, b) {
-    var f = a.flavor.toLowerCase().localeCompare(b.flavor.toLowerCase());
+    var f = baseFlavor(a.flavor).toLowerCase().localeCompare(baseFlavor(b.flavor).toLowerCase());
     if (f !== 0) return f;
+    var na = flavorNumber(a.flavor), nb = flavorNumber(b.flavor);
+    if (na !== null && nb !== null && na !== nb) return na - nb;
     return String(a.date_made).localeCompare(String(b.date_made));
   }
 
@@ -179,15 +192,15 @@
       return x.getFullYear() + "-" + pad2(x.getMonth() + 1) + "-" + pad2(x.getDate());
     }
     var containers = [
-      { id: makeId(), flavor: "Vanilla", state: "full", date_made: d(3), notes: null, created_at: iso(3 * DAY) },
-      { id: makeId(), flavor: "Vanilla", state: "half", date_made: d(6), notes: null, created_at: iso(6 * DAY) },
-      { id: makeId(), flavor: "Chocolate", state: "full", date_made: d(2), notes: "extra cocoa", created_at: iso(2 * DAY) },
-      { id: makeId(), flavor: "Strawberry", state: "full", date_made: d(0), notes: "fresh local berries", created_at: iso(90 * 1000) },
-      { id: makeId(), flavor: "Coffee", state: "full", date_made: d(4), notes: null, created_at: iso(4 * DAY) },
-      { id: makeId(), flavor: "Mango", state: "half", date_made: d(5), notes: null, created_at: iso(5 * DAY) },
-      { id: makeId(), flavor: "Pistachio", state: "full", date_made: d(1), notes: null, created_at: iso(1 * DAY) },
-      { id: makeId(), flavor: "Cookies & Cream", state: "full", date_made: d(3), notes: null, created_at: iso(3 * DAY) },
-      { id: makeId(), flavor: "Cookies & Cream", state: "full", date_made: d(3), notes: null, created_at: iso(3 * DAY) }
+      { id: makeId(), flavor: "Vanilla 1", state: "full", date_made: d(3), notes: null, created_at: iso(3 * DAY) },
+      { id: makeId(), flavor: "Vanilla 2", state: "half", date_made: d(6), notes: null, created_at: iso(6 * DAY) },
+      { id: makeId(), flavor: "Chocolate 1", state: "full", date_made: d(2), notes: "extra cocoa", created_at: iso(2 * DAY) },
+      { id: makeId(), flavor: "Strawberry 1", state: "full", date_made: d(0), notes: "fresh local berries", created_at: iso(90 * 1000) },
+      { id: makeId(), flavor: "Coffee 1", state: "full", date_made: d(4), notes: null, created_at: iso(4 * DAY) },
+      { id: makeId(), flavor: "Mango 1", state: "half", date_made: d(5), notes: null, created_at: iso(5 * DAY) },
+      { id: makeId(), flavor: "Pistachio 1", state: "full", date_made: d(1), notes: null, created_at: iso(1 * DAY) },
+      { id: makeId(), flavor: "Cookies & Cream 1", state: "full", date_made: d(3), notes: null, created_at: iso(3 * DAY) },
+      { id: makeId(), flavor: "Cookies & Cream 2", state: "full", date_made: d(3), notes: null, created_at: iso(3 * DAY) }
     ];
     var flavors = ["Vanilla", "Chocolate", "Coffee", "Mango", "Strawberry", "Pistachio", "Cookies & Cream", "Lemon", "Peach"];
     var consumptions = [];
@@ -443,8 +456,9 @@
   function groupByFlavor(sorted) {
     var groups = [], index = {};
     sorted.forEach(function (item) {
-      var key = item.flavor.toLowerCase();
-      if (!(key in index)) { index[key] = groups.length; groups.push({ flavor: item.flavor, items: [] }); }
+      var base = baseFlavor(item.flavor);
+      var key = base.toLowerCase();
+      if (!(key in index)) { index[key] = groups.length; groups.push({ flavor: base, items: [] }); }
       groups[index[key]].items.push(item);
     });
     return groups;
@@ -508,8 +522,9 @@
     // ...plus flavors we've made before, so they stay on the list at 0 —
     // unless the user has hidden them.
     consumptions.forEach(function (c) {
-      var key = c.flavor.toLowerCase();
-      if (!(key in byKey) && !hiddenFlavors[key]) { byKey[key] = { flavor: c.flavor, items: [] }; order.push(key); }
+      var base = baseFlavor(c.flavor);
+      var key = base.toLowerCase();
+      if (!(key in byKey) && !hiddenFlavors[key]) { byKey[key] = { flavor: base, items: [] }; order.push(key); }
     });
     var groups = order.map(function (k) { return byKey[k]; })
       .sort(function (a, b) { return a.flavor.toLowerCase().localeCompare(b.flavor.toLowerCase()); });
@@ -581,7 +596,7 @@
         var flavorEdit = document.createElement("input");
         flavorEdit.type = "text";
         flavorEdit.className = "flavor-edit";
-        flavorEdit.value = g.flavor;
+        flavorEdit.value = item.flavor;
         flavorEdit.setAttribute("aria-label", "Flavor name for this container");
         flavorEdit.addEventListener("change", function () {
           updateContainerFlavor(item.id, flavorEdit.value);
@@ -705,8 +720,9 @@
   function refreshSuggestions() {
     var seen = {}, names = [];
     inventory.forEach(function (item) {
-      var key = item.flavor.toLowerCase();
-      if (!seen[key]) { seen[key] = true; names.push(item.flavor); }
+      var base = baseFlavor(item.flavor);
+      var key = base.toLowerCase();
+      if (!seen[key]) { seen[key] = true; names.push(base); }
     });
     names.sort(function (a, b) { return a.localeCompare(b); });
     suggestions.innerHTML = "";
@@ -752,7 +768,7 @@
 
   function flavorTotals(list) {
     var m = {};
-    list.forEach(function (c) { m[c.flavor] = (m[c.flavor] || 0) + 1; });
+    list.forEach(function (c) { var b = baseFlavor(c.flavor); m[b] = (m[b] || 0) + 1; });
     return Object.keys(m).map(function (k) { return { flavor: k, count: m[k] }; })
       .sort(function (a, b) { return b.count - a.count; });
   }
@@ -763,8 +779,9 @@
       if (!c.date_made) return;
       var d = daysBetween(new Date(c.consumed_at), parseDay(c.date_made));
       if (d < 0) d = 0;
-      if (!m[c.flavor]) m[c.flavor] = { sum: 0, n: 0 };
-      m[c.flavor].sum += d; m[c.flavor].n++;
+      var b = baseFlavor(c.flavor);
+      if (!m[b]) m[b] = { sum: 0, n: 0 };
+      m[b].sum += d; m[b].n++;
     });
     return Object.keys(m).map(function (k) {
       var avg = Math.round(m[k].sum / m[k].n);
@@ -783,8 +800,8 @@
 
   function populateFlavorFilter() {
     var names = {};
-    inventory.forEach(function (i) { names[i.flavor] = true; });
-    consumptions.forEach(function (c) { names[c.flavor] = true; });
+    inventory.forEach(function (i) { names[baseFlavor(i.flavor)] = true; });
+    consumptions.forEach(function (c) { names[baseFlavor(c.flavor)] = true; });
     var list = Object.keys(names).sort(function (a, b) { return a.localeCompare(b); });
     var sig = list.join("|");
     if (flavorFilterEl._sig === sig) return;
@@ -837,11 +854,11 @@
     populateFlavorFilter();
     var sel = analyticsFlavor;
     var cons = sel === "all" ? consumptions
-      : consumptions.filter(function (c) { return c.flavor.toLowerCase() === sel; });
+      : consumptions.filter(function (c) { return baseFlavor(c.flavor).toLowerCase() === sel; });
 
     statTotalEl.textContent = cons.length;
     var stock = sel === "all" ? inventory.length
-      : inventory.filter(function (i) { return i.flavor.toLowerCase() === sel; }).length;
+      : inventory.filter(function (i) { return baseFlavor(i.flavor).toLowerCase() === sel; }).length;
     statStockEl.textContent = stock;
     var top = flavorTotals(consumptions);
     statTopEl.textContent = top.length ? top[0].flavor : "—";
@@ -1046,10 +1063,32 @@
     })();
   }
 
+  // Name new tubs "<flavor> <n>", using the lowest numbers not already taken
+  // by in-stock tubs of the same base flavor. A name typed with an explicit
+  // trailing number is kept verbatim.
+  function nextFlavorNames(flavor, qty) {
+    var out = [], i;
+    if (flavorNumber(flavor) !== null) {
+      for (i = 0; i < qty; i++) out.push(flavor);
+      return out;
+    }
+    var used = {};
+    inventory.forEach(function (it) {
+      if (baseFlavor(it.flavor).toLowerCase() !== flavor.toLowerCase()) return;
+      var n = flavorNumber(it.flavor);
+      if (n !== null) used[n] = true;
+    });
+    for (i = 1; out.length < qty; i++) {
+      if (!used[i]) out.push(flavor + " " + i);
+    }
+    return out;
+  }
+
   function addContainers(flavor, qty, dateISO, notes, printAfter) {
+    var names = nextFlavorNames(flavor, qty);
     var rows = [];
     for (var i = 0; i < qty; i++) {
-      rows.push({ flavor: flavor, state: "full", date_made: dateISO, notes: notes || null });
+      rows.push({ flavor: names[i], state: "full", date_made: dateISO, notes: notes || null });
     }
     var dec = Math.min(qty, emptiesCount);
     mutate(
@@ -1265,10 +1304,10 @@
     var sel = analyticsFlavor;
     var cons = (sel === "all"
       ? consumptions
-      : consumptions.filter(function (c) { return c.flavor.toLowerCase() === sel; })).slice();
+      : consumptions.filter(function (c) { return baseFlavor(c.flavor).toLowerCase() === sel; })).slice();
     cons.sort(function (a, b) { return new Date(b.consumed_at) - new Date(a.consumed_at); });
 
-    var flavorName = sel === "all" ? "" : (cons[0] ? cons[0].flavor : sel);
+    var flavorName = sel === "all" ? "" : (cons[0] ? baseFlavor(cons[0].flavor) : sel);
     consumedTitleEl.textContent = (sel === "all" ? "Consumed tubs" : "Consumed " + flavorName) + " (" + cons.length + ")";
 
     consumedListEl.innerHTML = "";
