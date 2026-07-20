@@ -13,7 +13,7 @@
   <link rel="apple-touch-icon" href="apple-touch-icon.png" />
   <link rel="icon" href="icon.svg" type="image/svg+xml" />
   <title>Geri's Glideria</title>
-  <link rel="stylesheet" href="styles.css?v=25" />
+  <link rel="stylesheet" href="styles.css?v=26" />
 </head>
 <body>
   <div class="app">
@@ -23,7 +23,10 @@
         <span id="header-count-num" class="hc-num">0</span>
         <span id="header-count-label" class="hc-label">tubs</span>
       </div>
-      <button id="add-btn" class="add-btn" type="button" aria-label="Add containers">+</button>
+      <div class="header-btns">
+        <button id="scan-btn" class="scan-btn" type="button" aria-label="Scan a tub label" hidden>📷</button>
+        <button id="add-btn" class="add-btn" type="button" aria-label="Add containers">+</button>
+      </div>
     </header>
 
     <div id="demo-banner" class="demo-banner" hidden>
@@ -155,6 +158,21 @@
     </div>
   </div>
 
+  <!-- QR scanner -->
+  <div id="scan-modal" class="modal" hidden>
+    <div class="modal-backdrop" data-scan-close></div>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="scan-title">
+      <h2 id="scan-title">Scan a tub label</h2>
+      <div class="scan-video-wrap">
+        <video id="scan-video" playsinline muted></video>
+      </div>
+      <p id="scan-hint" class="scan-hint">Point the camera at a label&rsquo;s QR code.</p>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" data-scan-close>Cancel</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Print status -->
   <div id="print-status" class="modal" hidden>
     <div class="modal-backdrop" data-print-close></div>
@@ -185,6 +203,6 @@
   <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
   <script src="config.js"></script>
   <script src="label-printer.js?v=34"></script>
-  <script src="app.js?v=30"></script>
+  <script src="app.js?v=31"></script>
 </body>
 </html>

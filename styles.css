@@ -69,6 +69,48 @@ html, body {
   letter-spacing: 0.04em;
 }
 
+.header-btns {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.scan-btn {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 2px solid var(--accent-ink);
+  background: var(--card);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+}
+.scan-btn:active { transform: scale(0.94); }
+
+.scan-video-wrap {
+  border-radius: 12px;
+  overflow: hidden;
+  background: #000;
+  aspect-ratio: 1;
+}
+
+#scan-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.scan-hint {
+  margin: 10px 0 0;
+  font-size: 14px;
+  color: var(--muted);
+  text-align: center;
+}
+
 .add-btn {
   flex: 0 0 auto;
   width: 44px;

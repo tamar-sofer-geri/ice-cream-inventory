@@ -1367,6 +1367,103 @@
     if (e.target.hasAttribute("data-consumed-close")) closeConsumedList();
   });
 
+  /* ---------- QR scanner ---------- */
+
+  // In-app label scanner: opens the camera, finds a QR, and jumps to that tub
+  // (same behavior as the ?tub= deep link, without leaving the app). Uses the
+  // native BarcodeDetector when available (Chrome/Android), else falls back to
+  // the jsQR library loaded on demand.
+  var scanBtn = document.getElementById("scan-btn");
+  var scanModal = document.getElementById("scan-modal");
+  var scanVideo = document.getElementById("scan-video");
+  var scanHint = document.getElementById("scan-hint");
+  var scanStream = null, scanTimer = null, scanDetector = null, scanCanvas = null;
+
+  if (scanBtn && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+    scanBtn.hidden = false;
+    scanBtn.addEventListener("click", openScanner);
+  }
+
+  function loadJsQR() {
+    if (window.jsQR) return Promise.resolve();
+    return new Promise(function (resolve, reject) {
+      var s = document.createElement("script");
+      s.src = "https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js";
+      s.onload = resolve;
+      s.onerror = function () { reject(new Error("couldn't load the QR library")); };
+      document.head.appendChild(s);
+    });
+  }
+
+  function openScanner() {
+    scanModal.hidden = false;
+    scanHint.textContent = "Point the camera at a label’s QR code.";
+    var setup = ("BarcodeDetector" in window)
+      ? Promise.resolve().then(function () {
+          scanDetector = new window.BarcodeDetector({ formats: ["qr_code"] });
+        }).catch(function () { scanDetector = null; return loadJsQR(); })
+      : loadJsQR();
+    setup.then(function () {
+      return navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false });
+    }).then(function (stream) {
+      scanStream = stream;
+      scanVideo.srcObject = stream;
+      return scanVideo.play();
+    }).then(function () {
+      scanTimer = setInterval(scanFrame, 250);
+    }).catch(function (err) {
+      console.warn("scanner failed", err);
+      scanHint.textContent = "Couldn’t open the camera — check the site’s camera permission.";
+    });
+  }
+
+  function scanFrame() {
+    if (!scanStream || scanVideo.readyState < 2) return;
+    if (scanDetector) {
+      scanDetector.detect(scanVideo).then(function (codes) {
+        if (codes && codes.length) handleScan(codes[0].rawValue);
+      }, function () { /* keep scanning */ });
+    } else if (window.jsQR) {
+      var w = scanVideo.videoWidth, h = scanVideo.videoHeight;
+      if (!w || !h) return;
+      if (!scanCanvas) scanCanvas = document.createElement("canvas");
+      scanCanvas.width = w; scanCanvas.height = h;
+      var ctx = scanCanvas.getContext("2d", { willReadFrequently: true });
+      ctx.drawImage(scanVideo, 0, 0, w, h);
+      var code = window.jsQR(ctx.getImageData(0, 0, w, h).data, w, h);
+      if (code && code.data) handleScan(code.data);
+    }
+  }
+
+  function handleScan(text) {
+    var id = null;
+    try { id = new URL(text).searchParams.get("tub"); } catch (e) { /* not a URL */ }
+    if (!id) return; // some other QR code — keep scanning
+    closeScanner();
+    if (navigator.vibrate) navigator.vibrate(80);
+    switchView("containers");
+    if (findById(id)) {
+      focusTub(id);
+    } else {
+      showNote("That tub isn't in stock anymore 🍦");
+      setTimeout(function () { showNote(""); }, 5000);
+    }
+  }
+
+  function closeScanner() {
+    scanModal.hidden = true;
+    if (scanTimer) { clearInterval(scanTimer); scanTimer = null; }
+    if (scanStream) {
+      scanStream.getTracks().forEach(function (t) { t.stop(); });
+      scanStream = null;
+    }
+    scanVideo.srcObject = null;
+  }
+
+  if (scanModal) scanModal.addEventListener("click", function (e) {
+    if (e.target.hasAttribute("data-scan-close")) closeScanner();
+  });
+
   /* ---------- add modal ---------- */
 
   function openModal() {
@@ -1391,6 +1488,7 @@
     if (e.key !== "Escape") return;
     if (!modal.hidden) closeModal();
     if (consumedModal && !consumedModal.hidden) closeConsumedList();
+    if (scanModal && !scanModal.hidden) closeScanner();
   });
 
   function readAddForm() {
