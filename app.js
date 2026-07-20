@@ -34,6 +34,9 @@
   var syncNote = document.getElementById("sync-note");
   var demoBanner = document.getElementById("demo-banner");
   var demoResetEl = document.getElementById("demo-reset");
+  var headerCountEl = document.getElementById("header-count");
+  var headerCountNumEl = document.getElementById("header-count-num");
+  var headerCountLabelEl = document.getElementById("header-count-label");
   var addBtn = document.getElementById("add-btn");
   var modal = document.getElementById("add-modal");
   var addForm = document.getElementById("add-form");
@@ -363,6 +366,24 @@
     emptiesNumEl.textContent = emptiesCount;
     renderAnalytics();
     refreshSuggestions();
+    renderHeaderCount();
+  }
+
+  // Header badge: flavor count on the Flavors view, tub count on Inventory.
+  function renderHeaderCount() {
+    if (!headerCountEl) return;
+    if (currentView === "containers") {
+      var n = groupByFlavor(inventory).length;
+      headerCountNumEl.textContent = n;
+      headerCountLabelEl.textContent = n === 1 ? "flavor" : "flavors";
+      headerCountEl.hidden = false;
+    } else if (currentView === "inventory") {
+      headerCountNumEl.textContent = inventory.length;
+      headerCountLabelEl.textContent = inventory.length === 1 ? "tub" : "tubs";
+      headerCountEl.hidden = false;
+    } else {
+      headerCountEl.hidden = true;
+    }
   }
 
   function renderContainers(sorted) {
@@ -1261,6 +1282,7 @@
       t.classList.toggle("is-active", active);
       if (active) t.setAttribute("aria-current", "page"); else t.removeAttribute("aria-current");
     });
+    renderHeaderCount();
   }
 
   Array.prototype.forEach.call(document.querySelectorAll(".tab"), function (t) {

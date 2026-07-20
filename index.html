@@ -13,12 +13,16 @@
   <link rel="apple-touch-icon" href="apple-touch-icon.png" />
   <link rel="icon" href="icon.svg" type="image/svg+xml" />
   <title>Geri's Glideria</title>
-  <link rel="stylesheet" href="styles.css?v=24" />
+  <link rel="stylesheet" href="styles.css?v=25" />
 </head>
 <body>
   <div class="app">
     <header class="app-header">
       <img class="brand-logo" src="logo.svg" alt="Geri's Glideria" />
+      <div id="header-count" class="header-count" aria-live="polite" hidden>
+        <span id="header-count-num" class="hc-num">0</span>
+        <span id="header-count-label" class="hc-label">tubs</span>
+      </div>
       <button id="add-btn" class="add-btn" type="button" aria-label="Add containers">+</button>
     </header>
 
@@ -181,6 +185,6 @@
   <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
   <script src="config.js"></script>
   <script src="label-printer.js?v=34"></script>
-  <script src="app.js?v=28"></script>
+  <script src="app.js?v=29"></script>
 </body>
 </html>
