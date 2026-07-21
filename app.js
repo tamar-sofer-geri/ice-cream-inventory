@@ -463,8 +463,8 @@
     var halfBtn = document.createElement("button");
     halfBtn.type = "button";
     halfBtn.className = "btn btn-half";
-    halfBtn.textContent = "Half";
-    halfBtn.setAttribute("aria-label", "Ate half a container of " + item.flavor);
+    halfBtn.textContent = item.state === "half" ? "Done" : "Half";
+    halfBtn.setAttribute("aria-label", item.state === "half" ? "Finished the rest of " + item.flavor : "Ate half a container of " + item.flavor);
     halfBtn.addEventListener("click", function () { eatHalf(item.id); });
     actions.appendChild(halfBtn);
 
