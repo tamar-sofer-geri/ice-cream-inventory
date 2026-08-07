@@ -196,7 +196,19 @@ html, body {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
 }
+.row-main:active { opacity: 0.6; }
+.row-main:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: 2px; border-radius: 6px; }
 .row-flavor {
   min-width: 0;
   font-size: 17px;
@@ -476,6 +488,15 @@ html, body {
 .clr-info { display: flex; flex-direction: column; min-width: 0; }
 .clr-flavor { font-weight: 700; color: var(--ink); }
 .clr-when { color: var(--muted); font-size: 13px; }
+.clr-notes {
+  color: var(--muted);
+  font-size: 12px;
+  font-style: italic;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
 .return-btn {
   flex: 0 0 auto;
   background: var(--accent-strong);
@@ -500,9 +521,13 @@ html, body {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 8px 0;
+  padding: 8px 6px;
   border-top: 1px solid var(--line);
   font-size: 15px;
+  border-radius: 10px;
+}
+.summary-dates li.tub-focus {
+  animation: tubfocus 1.2s ease-in-out 0s 5;
 }
 .sd-top {
   display: flex;
