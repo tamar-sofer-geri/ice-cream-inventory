@@ -8,7 +8,7 @@ Each row is one physical container of a flavor, shown as **full** or **half**. T
 - **Half** — you ate half → a **full** container becomes **half**; a **half** container is finished and removed.
 - **➕** — add containers: pick a flavor, **how many** to add at once, the **date made** (defaults to today, editable), and optional **notes** (e.g. recipe tweaks).
 
-Dates, flavors, and notes for each container can be edited later from the **Inventory** page (expand a flavor). Opening the app with a `?tub=<container-id>` link (e.g. from a scanned QR label) jumps to the **Flavors** page and highlights that exact container, ready to mark Full/Half.
+Dates, flavors, and notes for each container can be edited later from the **Inventory** page (expand a flavor). Tapping a container's name on the **Flavors** page jumps to it on the **Inventory** page, with its flavor group expanded and the tub briefly highlighted. Opening the app with a `?tub=<container-id>` link (e.g. from a scanned QR label) jumps the other way — to the **Flavors** page — and highlights that exact container, ready to mark Full/Half.
 
 There are three pages, switched via the bottom tab bar:
 
@@ -89,7 +89,8 @@ create table if not exists public.consumptions (
   id uuid primary key default gen_random_uuid(),
   flavor text not null,
   date_made date,
-  consumed_at timestamptz not null default now()
+  consumed_at timestamptz not null default now(),
+  notes text
 );
 alter table public.consumptions enable row level security;
 create policy "public read"   on public.consumptions for select using (true);
@@ -97,6 +98,11 @@ create policy "public insert" on public.consumptions for insert with check (true
 create policy "public delete" on public.consumptions for delete using (true);
 alter publication supabase_realtime add table public.consumptions;
 ```
+
+> **Migrating an existing database:** if your `consumptions` table was created before the `notes` column existed, run this once in the Supabase SQL editor:
+> ```sql
+> alter table public.consumptions add column if not exists notes text;
+> ```
 
 > Access is currently **open** (anyone with the app can read/write). To lock it down later, tighten these policies or add Supabase Auth.
 
