@@ -290,7 +290,7 @@
     return Promise.all([
       db.from("containers").select("*"),
       db.from("empties").select("*", { count: "exact", head: true }),
-      db.from("consumptions").select("id, flavor, date_made, consumed_at"),
+      db.from("consumptions").select("id, flavor, date_made, consumed_at, notes"),
       db.from("hidden_flavors").select("flavor")
     ]).then(function (res) {
       var c = res[0], e = res[1], k = res[2], h = res[3];
@@ -299,7 +299,7 @@
       if (!e.error && typeof e.count === "number") emptiesCount = e.count;
       if (!k.error && Array.isArray(k.data)) {
         consumptions = k.data.map(function (r) {
-          return { id: r.id, flavor: r.flavor, date_made: r.date_made, consumed_at: r.consumed_at };
+          return { id: r.id, flavor: r.flavor, date_made: r.date_made, consumed_at: r.consumed_at, notes: r.notes || null };
         });
       }
       // hidden_flavors is optional — if the table doesn't exist yet, keep the
@@ -429,8 +429,10 @@
       tub.innerHTML = tubSVG();
     }
 
-    var main = document.createElement("span");
+    var main = document.createElement("button");
+    main.type = "button";
     main.className = "row-main";
+    main.setAttribute("aria-label", "View " + item.flavor + " in Inventory");
     var name = document.createElement("span");
     name.className = "row-flavor";
     name.textContent = item.flavor;
@@ -446,6 +448,7 @@
       note.title = item.notes;
       main.appendChild(note);
     }
+    main.addEventListener("click", function () { goToInventoryTub(item.id); });
 
     var actions = document.createElement("span");
     actions.className = "row-actions";
@@ -606,6 +609,7 @@
       dates.className = "summary-dates";
       g.items.forEach(function (item) {
         var d = document.createElement("li");
+        d.dataset.id = item.id;
         var dateEdit = document.createElement("input");
         dateEdit.type = "date";
         dateEdit.className = "date-edit";
@@ -675,6 +679,7 @@
     });
 
     renderConsumedSection();
+    applyInventoryFocusClass(false); // keep a tap-through highlight through re-renders
   }
 
   // Collapsible "Consumed" row at the bottom of Inventory: every finished tub
@@ -725,6 +730,10 @@
         var f = document.createElement("span"); f.className = "clr-flavor"; f.textContent = cons.flavor;
         var w = document.createElement("span"); w.className = "clr-when"; w.textContent = formatConsumedAt(cons.consumed_at);
         info.appendChild(f); info.appendChild(w);
+        if (cons.notes) {
+          var n = document.createElement("span"); n.className = "clr-notes"; n.textContent = cons.notes; n.title = cons.notes;
+          info.appendChild(n);
+        }
         var back = document.createElement("button");
         back.type = "button";
         back.className = "return-btn";
@@ -940,13 +949,13 @@
       emptiesCount++;
       // Log the consumption under the tub's own id so "return to shelf" can
       // restore the same id and the printed QR code keeps working.
-      consumptions.push({ id: id, flavor: snap.flavor, date_made: snap.date_made, consumed_at: new Date().toISOString() });
+      consumptions.push({ id: id, flavor: snap.flavor, date_made: snap.date_made, consumed_at: new Date().toISOString(), notes: snap.notes });
       saveCache();
       render();
       armUndo({ type: "finish", snap: snap, emptyId: null, consId: null });
 
       if (usingSupabase) {
-        var consRec = { flavor: snap.flavor, date_made: snap.date_made };
+        var consRec = { flavor: snap.flavor, date_made: snap.date_made, notes: snap.notes };
         if (isUuid(id)) consRec.id = id;
         Promise.all([
           db.from("containers").delete().eq("id", id),
@@ -994,12 +1003,12 @@
       if (consumptions[i].id === cons.id) { consumptions.splice(i, 1); break; }
     }
     // Reuse the original id (= the consumption's id) so the printed QR still resolves.
-    inventory.push({ id: cons.id, flavor: cons.flavor, state: "full", date_made: cons.date_made, notes: null, created_at: new Date().toISOString() });
+    inventory.push({ id: cons.id, flavor: cons.flavor, state: "full", date_made: cons.date_made, notes: cons.notes || null, created_at: new Date().toISOString() });
     emptiesCount = Math.max(0, emptiesCount - 1);
     saveCache();
     render();
     if (usingSupabase) {
-      var contRec = { flavor: cons.flavor, state: "full", date_made: cons.date_made };
+      var contRec = { flavor: cons.flavor, state: "full", date_made: cons.date_made, notes: cons.notes || null };
       if (isUuid(cons.id)) contRec.id = cons.id;
       Promise.all([
         db.from("containers").insert(contRec),
@@ -1085,466 +1094,4 @@
   }
 
   // Name new tubs "<flavor> <n>", using the lowest numbers not already taken
-  // by in-stock tubs of the same base flavor. A name typed with an explicit
-  // trailing number is kept verbatim.
-  function nextFlavorNames(flavor, qty) {
-    var out = [], i;
-    if (flavorNumber(flavor) !== null) {
-      for (i = 0; i < qty; i++) out.push(flavor);
-      return out;
-    }
-    var used = {};
-    inventory.forEach(function (it) {
-      if (baseFlavor(it.flavor).toLowerCase() !== flavor.toLowerCase()) return;
-      var n = flavorNumber(it.flavor);
-      if (n !== null) used[n] = true;
-    });
-    for (i = 1; out.length < qty; i++) {
-      if (!used[i]) out.push(flavor + " " + i);
-    }
-    return out;
-  }
-
-  function addContainers(flavor, qty, dateISO, notes, printAfter) {
-    var names = nextFlavorNames(flavor, qty);
-    var rows = [];
-    for (var i = 0; i < qty; i++) {
-      rows.push({ flavor: names[i], state: "full", date_made: dateISO, notes: notes || null });
-    }
-    var dec = Math.min(qty, emptiesCount);
-    mutate(
-      function () {
-        return Promise.all([
-          db.from("containers").insert(rows).select("*"),
-          decrementEmptiesRemote(dec)
-        ]).then(function (results) {
-          var bad = results.filter(function (r) { return r && r.error; })[0];
-          // Print the server rows (real id + created_at) so the QR is valid.
-          if (!bad && printAfter && results[0] && results[0].data) printLabels(results[0].data);
-          return { error: bad ? bad.error : null };
-        });
-      },
-      function () {
-        var nowISO = new Date().toISOString();
-        rows.forEach(function (r) {
-          inventory.push({ id: makeId(), flavor: r.flavor, state: r.state, date_made: r.date_made, notes: r.notes, created_at: nowISO });
-        });
-        emptiesCount = Math.max(0, emptiesCount - dec);
-      }
-    );
-  }
-
-  // Edit the notes of a specific container from the Inventory page.
-  function updateContainerNotes(id, notes) {
-    var item = findById(id);
-    var val = (notes || "").trim();
-    if (!item || (item.notes || "") === val) return;
-    mutate(
-      function () { return db.from("containers").update({ notes: val || null }).eq("id", id); },
-      function () { item.notes = val || null; }
-    );
-  }
-
-  // Deep link: focus the Flavors view on a specific container (from a QR link).
-  var focusTubId = null;
-  var focusTubTimer = null;
-
-  function applyFocusClass(scroll) {
-    if (!focusTubId) return;
-    var row = listEl.querySelector('.row[data-id="' + focusTubId + '"]');
-    if (!row) return;
-    row.classList.add("tub-focus");
-    if (scroll) row.scrollIntoView({ block: "center", behavior: "smooth" });
-  }
-
-  function focusTub(id) {
-    focusTubId = id;
-    if (focusTubTimer) clearTimeout(focusTubTimer);
-    setTimeout(function () { applyFocusClass(true); }, 60);
-    focusTubTimer = setTimeout(function () {
-      focusTubId = null;
-      var r = listEl.querySelector(".row.tub-focus");
-      if (r) r.classList.remove("tub-focus");
-    }, 6000);
-  }
-
-  function maybeHandleDeepLink() {
-    if (!deepLinkTub || deepLinkHandled) return;
-    deepLinkHandled = true;
-    // Drop ?tub= from the address bar so refreshing the page doesn't re-run
-    // the deep link (and re-show "isn't in stock" for stale QR labels).
-    try {
-      var u = new URL(location.href);
-      u.searchParams.delete("tub");
-      history.replaceState(null, "", u.pathname + u.search + u.hash);
-    } catch (e) { /* ignore */ }
-    switchView("containers");
-    if (!findById(deepLinkTub)) {
-      showNote("That tub isn't in stock anymore 🍦");
-      setTimeout(function () { showNote(""); }, 5000);
-      return;
-    }
-    focusTub(deepLinkTub);
-  }
-
-  function animateRemoval(id, done) {
-    var row = listEl.querySelector('.row[data-id="' + id + '"]');
-    if (!row || currentView !== "containers") { done(); return; }
-    row.classList.add("removing");
-    var finished = false;
-    var finish = function () { if (finished) return; finished = true; done(); };
-    row.addEventListener("transitionend", finish, { once: true });
-    setTimeout(finish, 250);
-  }
-
-  /* ---------- undo ---------- */
-
-  function armUndo(action) {
-    pendingUndo = action;
-    undoLabelEl.textContent = action.type === "finish"
-      ? "Finished " + action.snap.flavor
-      : action.type === "delete"
-      ? "Deleted " + action.snap.flavor
-      : action.type === "hide"
-      ? "Hid " + action.snap.flavor
-      : "Marked half";
-    undoBar.hidden = false;
-    if (undoTimer) clearTimeout(undoTimer);
-    undoTimer = setTimeout(hideUndo, 2600);
-  }
-  function hideUndo() {
-    undoBar.hidden = true;
-    pendingUndo = null;
-    if (undoTimer) { clearTimeout(undoTimer); undoTimer = null; }
-  }
-  function performUndo() {
-    var a = pendingUndo;
-    hideUndo();
-    if (!a) return;
-    if (a.type === "half") undoHalf(a);
-    else if (a.type === "finish") undoFinish(a);
-    else if (a.type === "delete") undoDelete(a);
-    else if (a.type === "hide") undoHide(a);
-  }
-
-  function undoHide(a) {
-    setHidden(a.key, false);
-    render();
-  }
-
-  function undoDelete(a) {
-    inventory.push({ id: makeId(), flavor: a.snap.flavor, state: a.snap.state, date_made: a.snap.date_made, notes: a.snap.notes, created_at: a.snap.created_at });
-    saveCache();
-    render();
-    if (usingSupabase) {
-      var rec = { flavor: a.snap.flavor, state: a.snap.state, date_made: a.snap.date_made, notes: a.snap.notes };
-      if (a.snap.created_at) rec.created_at = a.snap.created_at;
-      db.from("containers").insert(rec).then(function () { fetchAll(); }).catch(function (e) { console.error("undo delete failed", e); });
-    }
-  }
-
-  function undoHalf(a) {
-    var item = findById(a.id);
-    if (item) item.state = "full";
-    saveCache();
-    render();
-    if (usingSupabase) {
-      db.from("containers").update({ state: "full" }).eq("id", a.id)
-        .then(function () { fetchAll(); });
-    }
-  }
-
-  function undoFinish(a) {
-    // restore container with its original id so the QR code still resolves
-    inventory.push({ id: a.snap.id || makeId(), flavor: a.snap.flavor, state: a.snap.state, date_made: a.snap.date_made, notes: a.snap.notes, created_at: a.snap.created_at });
-    emptiesCount = Math.max(0, emptiesCount - 1);
-    // remove one local consumption for this flavor (most recent)
-    for (var i = consumptions.length - 1; i >= 0; i--) {
-      if (consumptions[i].flavor === a.snap.flavor) { consumptions.splice(i, 1); break; }
-    }
-    saveCache();
-    render();
-    if (usingSupabase) {
-      var rec = { flavor: a.snap.flavor, state: a.snap.state, date_made: a.snap.date_made, notes: a.snap.notes };
-      if (a.snap.created_at) rec.created_at = a.snap.created_at;
-      if (isUuid(a.snap.id)) rec.id = a.snap.id;
-      var ops = [db.from("containers").insert(rec)];
-      ops.push(a.emptyId ? db.from("empties").delete().eq("id", a.emptyId) : decrementEmptiesRemote(1));
-      ops.push(a.consId ? db.from("consumptions").delete().eq("id", a.consId) : deleteLatestConsumptionRemote(a.snap.flavor));
-      Promise.all(ops).then(function () { fetchAll(); }).catch(function (e) { console.error("undo failed", e); });
-    }
-  }
-
-  undoBtn.addEventListener("click", performUndo);
-
-  /* ---------- view switching ---------- */
-
-  function switchView(view) {
-    currentView = view;
-    document.getElementById("view-containers").hidden = view !== "containers";
-    document.getElementById("view-inventory").hidden = view !== "inventory";
-    document.getElementById("view-analytics").hidden = view !== "analytics";
-    Array.prototype.forEach.call(document.querySelectorAll(".tab"), function (t) {
-      var active = t.dataset.view === view;
-      t.classList.toggle("is-active", active);
-      if (active) t.setAttribute("aria-current", "page"); else t.removeAttribute("aria-current");
-    });
-    renderHeaderCount();
-  }
-
-  Array.prototype.forEach.call(document.querySelectorAll(".tab"), function (t) {
-    t.addEventListener("click", function () { switchView(t.dataset.view); });
-  });
-
-  emptiesPlusEl.addEventListener("click", incEmpties);
-  emptiesMinusEl.addEventListener("click", decEmpties);
-
-  Array.prototype.forEach.call(periodSeg.querySelectorAll(".seg-btn"), function (b) {
-    b.addEventListener("click", function () { analyticsPeriod = b.dataset.period; renderAnalytics(); });
-  });
-  flavorFilterEl.addEventListener("change", function () {
-    analyticsFlavor = flavorFilterEl.value; renderAnalytics();
-  });
-
-  var stockBtn = document.getElementById("stock-btn");
-  if (stockBtn) stockBtn.addEventListener("click", function () {
-    switchView("containers");
-    window.scrollTo(0, 0);
-  });
-
-  /* ---------- consumed-tubs list (from the Analytics "consumed" stat) ---------- */
-
-  var consumedModal = document.getElementById("consumed-modal");
-  var consumedListEl = document.getElementById("consumed-list");
-  var consumedTitleEl = document.getElementById("consumed-title");
-  var consumedBtn = document.getElementById("consumed-btn");
-
-  function formatConsumedAt(iso) {
-    var dt = new Date(iso);
-    if (isNaN(dt)) return "";
-    var opts = { month: "short", day: "numeric" };
-    if (dt.getFullYear() !== new Date().getFullYear()) opts.year = "numeric";
-    var date = dt.toLocaleDateString(undefined, opts);
-    var time = dt.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
-    return date + " · " + time;
-  }
-
-  function openConsumedList() {
-    var sel = analyticsFlavor;
-    var cons = (sel === "all"
-      ? consumptions
-      : consumptions.filter(function (c) { return baseFlavor(c.flavor).toLowerCase() === sel; })).slice();
-    cons.sort(function (a, b) { return new Date(b.consumed_at) - new Date(a.consumed_at); });
-
-    var flavorName = sel === "all" ? "" : (cons[0] ? baseFlavor(cons[0].flavor) : sel);
-    consumedTitleEl.textContent = (sel === "all" ? "Consumed tubs" : "Consumed " + flavorName) + " (" + cons.length + ")";
-
-    consumedListEl.innerHTML = "";
-    if (!cons.length) {
-      consumedListEl.innerHTML = '<p class="muted-row">No consumed tubs yet.</p>';
-    } else {
-      cons.forEach(function (c) {
-        var row = document.createElement("div");
-        row.className = "consumed-item";
-        var name = document.createElement("span");
-        name.className = "ci-flavor";
-        name.textContent = c.flavor;
-        var when = document.createElement("span");
-        when.className = "ci-when";
-        when.textContent = formatConsumedAt(c.consumed_at);
-        row.appendChild(name);
-        row.appendChild(when);
-        consumedListEl.appendChild(row);
-      });
-    }
-    consumedModal.hidden = false;
-  }
-
-  function closeConsumedList() { consumedModal.hidden = true; }
-
-  if (consumedBtn) consumedBtn.addEventListener("click", openConsumedList);
-  if (consumedModal) consumedModal.addEventListener("click", function (e) {
-    if (e.target.hasAttribute("data-consumed-close")) closeConsumedList();
-  });
-
-  /* ---------- QR scanner ---------- */
-
-  // In-app label scanner: opens the camera, finds a QR, and jumps to that tub
-  // (same behavior as the ?tub= deep link, without leaving the app). Uses the
-  // native BarcodeDetector when available (Chrome/Android), else falls back to
-  // the jsQR library loaded on demand.
-  var scanBtn = document.getElementById("scan-btn");
-  var scanModal = document.getElementById("scan-modal");
-  var scanVideo = document.getElementById("scan-video");
-  var scanHint = document.getElementById("scan-hint");
-  var scanStream = null, scanTimer = null, scanDetector = null, scanCanvas = null;
-
-  if (scanBtn && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-    scanBtn.hidden = false;
-    scanBtn.addEventListener("click", openScanner);
-  }
-
-  function loadJsQR() {
-    if (window.jsQR) return Promise.resolve();
-    return new Promise(function (resolve, reject) {
-      var s = document.createElement("script");
-      s.src = "https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js";
-      s.onload = resolve;
-      s.onerror = function () { reject(new Error("couldn't load the QR library")); };
-      document.head.appendChild(s);
-    });
-  }
-
-  function openScanner() {
-    scanModal.hidden = false;
-    scanHint.textContent = "Point the camera at a label’s QR code.";
-    var setup = ("BarcodeDetector" in window)
-      ? Promise.resolve().then(function () {
-          scanDetector = new window.BarcodeDetector({ formats: ["qr_code"] });
-        }).catch(function () { scanDetector = null; return loadJsQR(); })
-      : loadJsQR();
-    setup.then(function () {
-      return navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false });
-    }).then(function (stream) {
-      scanStream = stream;
-      scanVideo.srcObject = stream;
-      return scanVideo.play();
-    }).then(function () {
-      scanTimer = setInterval(scanFrame, 250);
-    }).catch(function (err) {
-      console.warn("scanner failed", err);
-      scanHint.textContent = "Couldn’t open the camera — check the site’s camera permission.";
-    });
-  }
-
-  function scanFrame() {
-    if (!scanStream || scanVideo.readyState < 2) return;
-    if (scanDetector) {
-      scanDetector.detect(scanVideo).then(function (codes) {
-        if (codes && codes.length) handleScan(codes[0].rawValue);
-      }, function () { /* keep scanning */ });
-    } else if (window.jsQR) {
-      var w = scanVideo.videoWidth, h = scanVideo.videoHeight;
-      if (!w || !h) return;
-      if (!scanCanvas) scanCanvas = document.createElement("canvas");
-      scanCanvas.width = w; scanCanvas.height = h;
-      var ctx = scanCanvas.getContext("2d", { willReadFrequently: true });
-      ctx.drawImage(scanVideo, 0, 0, w, h);
-      var code = window.jsQR(ctx.getImageData(0, 0, w, h).data, w, h);
-      if (code && code.data) handleScan(code.data);
-    }
-  }
-
-  function handleScan(text) {
-    var id = null;
-    try { id = new URL(text).searchParams.get("tub"); } catch (e) { /* not a URL */ }
-    if (!id) return; // some other QR code — keep scanning
-    closeScanner();
-    if (navigator.vibrate) navigator.vibrate(80);
-    switchView("containers");
-    if (findById(id)) {
-      focusTub(id);
-    } else {
-      showNote("That tub isn't in stock anymore 🍦");
-      setTimeout(function () { showNote(""); }, 5000);
-    }
-  }
-
-  function closeScanner() {
-    scanModal.hidden = true;
-    if (scanTimer) { clearInterval(scanTimer); scanTimer = null; }
-    if (scanStream) {
-      scanStream.getTracks().forEach(function (t) { t.stop(); });
-      scanStream = null;
-    }
-    scanVideo.srcObject = null;
-  }
-
-  if (scanModal) scanModal.addEventListener("click", function (e) {
-    if (e.target.hasAttribute("data-scan-close")) closeScanner();
-  });
-
-  /* ---------- add modal ---------- */
-
-  function openModal() {
-    modal.hidden = false;
-    flavorInput.value = "";
-    qtyInput.value = "1";
-    dateInput.value = todayISO();
-    notesInput.value = "";
-    flavorInput.focus();
-  }
-  function closeModal() { modal.hidden = true; }
-
-  addBtn.addEventListener("click", openModal);
-  modal.addEventListener("click", function (e) { if (e.target.hasAttribute("data-close")) closeModal(); });
-
-  var printStatus = document.getElementById("print-status");
-  if (printStatus) printStatus.addEventListener("click", function (e) {
-    if (e.target.hasAttribute("data-print-close")) printStatus.hidden = true;
-    if (e.target.hasAttribute("data-print-test") && window.GlideriaPrinter) window.GlideriaPrinter.selfTest();
-  });
-  document.addEventListener("keydown", function (e) {
-    if (e.key !== "Escape") return;
-    if (!modal.hidden) closeModal();
-    if (consumedModal && !consumedModal.hidden) closeConsumedList();
-    if (scanModal && !scanModal.hidden) closeScanner();
-  });
-
-  function readAddForm() {
-    var flavor = flavorInput.value.trim();
-    if (!flavor) return null;
-    return {
-      flavor: flavor,
-      qty: Math.max(1, Math.min(99, parseInt(qtyInput.value, 10) || 1)),
-      dateISO: dateInput.value || todayISO(),
-      notes: notesInput.value.trim()
-    };
-  }
-
-  function submitAdd(printAfter) {
-    var f = readAddForm();
-    if (!f) { flavorInput.focus(); return; }
-    addContainers(f.flavor, f.qty, f.dateISO, f.notes, printAfter);
-    closeModal();
-  }
-
-  addForm.addEventListener("submit", function (e) { e.preventDefault(); submitAdd(false); });
-
-  var addPrintBtn = document.getElementById("add-print-btn");
-  if (addPrintBtn && window.GlideriaPrinter && navigator.bluetooth) {
-    addPrintBtn.hidden = false;
-    addPrintBtn.addEventListener("click", function () {
-      if (!readAddForm()) { flavorInput.focus(); return; }
-      // Start connecting now, while this tap still counts as a user gesture.
-      window.GlideriaPrinter.warmup();
-      submitAdd(true);
-    });
-  }
-
-  /* ---------- realtime + boot ---------- */
-
-  if (usingSupabase) {
-    db.channel("glideria-changes")
-      .on("postgres_changes", { event: "*", schema: "public", table: "containers" }, function () { fetchAll(); })
-      .on("postgres_changes", { event: "*", schema: "public", table: "empties" }, function () { fetchAll(); })
-      .on("postgres_changes", { event: "*", schema: "public", table: "consumptions" }, function () { fetchAll(); })
-      .on("postgres_changes", { event: "*", schema: "public", table: "hidden_flavors" }, function () { fetchAll(); })
-      .subscribe();
-
-    document.addEventListener("visibilitychange", function () { if (!document.hidden) fetchAll(); });
-  } else if (isDemo) {
-    if (demoBanner) demoBanner.hidden = false;
-  } else {
-    showNote("Local-only mode: add your Supabase keys in config.js to sync across devices.");
-  }
-
-  if (demoResetEl) demoResetEl.addEventListener("click", function () {
-    try { window.localStorage.removeItem(CACHE_KEY); } catch (e) { /* ignore */ }
-    location.reload();
-  });
-
-  render();
-  fetchAll();
-  setInterval(refreshCuringIcons, 60000); // flip curing icons at the 24h mark
-})();
+  // by in-stock tubs of the same base flavor. A name typed with
