@@ -1,3 +1,5 @@
+
+```javascript
 /* Geri's Glideria — ice cream inventory
  *
  * containers  : one row per physical tub { id, flavor, state, date_made }
@@ -166,11 +168,13 @@
   }
 
   function tubSVG() {
-    // Full = solid purple fill; Half = white top with a purple bottom half.
+    // Full = solid purple fill; Half = white top with a purple bottom half;
+    // Low = white top with a thin purple sliver at the very bottom (dregs, less than half).
     // Fills are drawn first, outlines last so the stroke stays crisp.
     return '<svg class="tub-svg" viewBox="0 0 24 26">' +
       '<path class="body-fill" d="M3.6 7.6 h16.8 l-1.9 15.1 a1.4 1.4 0 0 1 -1.4 1.2 h-10.2 a1.4 1.4 0 0 1 -1.4 -1.2 z"/>' +
       '<path class="half-fill" d="M4.6 15.6 L19.4 15.6 L18.5 22.7 a1.4 1.4 0 0 1 -1.4 1.2 h-10.2 a1.4 1.4 0 0 1 -1.4 -1.2 Z"/>' +
+      '<path class="low-fill" d="M5.2 20.4 L18.8 20.4 L18.5 22.7 a1.4 1.4 0 0 1 -1.4 1.2 h-10.2 a1.4 1.4 0 0 1 -1.4 -1.2 Z"/>' +
       '<path class="lid-fill" d="M2.6 3.2 h18.8 a2.4 2.4 0 0 1 0 4.8 h-18.8 a2.4 2.4 0 0 1 0 -4.8 z"/>' +
       '<path class="tub-outline" d="M3.6 7.6 h16.8 l-1.9 15.1 a1.4 1.4 0 0 1 -1.4 1.2 h-10.2 a1.4 1.4 0 0 1 -1.4 -1.2 z"/>' +
       '<path class="tub-outline" d="M2.6 3.2 h18.8 a2.4 2.4 0 0 1 0 4.8 h-18.8 a2.4 2.4 0 0 1 0 -4.8 z"/>' +
@@ -197,6 +201,7 @@
     var containers = [
       { id: makeId(), flavor: "Vanilla 1", state: "full", date_made: d(3), notes: null, created_at: iso(3 * DAY) },
       { id: makeId(), flavor: "Vanilla 2", state: "half", date_made: d(6), notes: null, created_at: iso(6 * DAY) },
+      { id: makeId(), flavor: "Mango 2", state: "low", date_made: d(8), notes: null, created_at: iso(8 * DAY) },
       { id: makeId(), flavor: "Chocolate 1", state: "full", date_made: d(2), notes: "extra cocoa", created_at: iso(2 * DAY) },
       { id: makeId(), flavor: "Strawberry 1", state: "full", date_made: d(0), notes: "fresh local berries", created_at: iso(90 * 1000) },
       { id: makeId(), flavor: "Coffee 1", state: "full", date_made: d(4), notes: null, created_at: iso(4 * DAY) },
@@ -453,23 +458,13 @@
     var actions = document.createElement("span");
     actions.className = "row-actions";
 
-    if (item.state === "full") {
-      var fullBtn = document.createElement("button");
-      fullBtn.type = "button";
-      fullBtn.className = "btn btn-full";
-      fullBtn.textContent = "Full";
-      fullBtn.setAttribute("aria-label", "Ate a full container of " + item.flavor);
-      fullBtn.addEventListener("click", function () { eatFull(item.id); });
-      actions.appendChild(fullBtn);
-    }
-
-    var halfBtn = document.createElement("button");
-    halfBtn.type = "button";
-    halfBtn.className = "btn btn-half";
-    halfBtn.textContent = item.state === "half" ? "Done" : "Half";
-    halfBtn.setAttribute("aria-label", item.state === "half" ? "Finished the rest of " + item.flavor : "Ate half a container of " + item.flavor);
-    halfBtn.addEventListener("click", function () { eatHalf(item.id); });
-    actions.appendChild(halfBtn);
+    var goBtn = document.createElement("button");
+    goBtn.type = "button";
+    goBtn.className = "btn " + stateBtnClass(item.state);
+    goBtn.textContent = stateBtnLabel(item.state);
+    goBtn.setAttribute("aria-label", stateBtnAria(item.flavor, item.state));
+    goBtn.addEventListener("click", function () { advanceState(item.id); });
+    actions.appendChild(goBtn);
 
     li.appendChild(tub);
     li.appendChild(main);
@@ -631,7 +626,7 @@
         });
         var st = document.createElement("span");
         st.className = "date-state";
-        st.textContent = item.state === "half" ? "half" : "full";
+        st.textContent = item.state === "half" ? "half" : item.state === "low" ? "low" : "full";
 
         var top = document.createElement("div");
         top.className = "sd-top";
@@ -824,7 +819,7 @@
     return inventory.map(function (i) {
       var age = daysBetween(today, parseDay(i.date_made));
       if (age < 0) age = 0;
-      return { label: i.flavor + (i.state === "half" ? " (half)" : ""), value: age + (age === 1 ? " day" : " days"), sort: age };
+      return { label: i.flavor + (i.state === "half" ? " (half)" : i.state === "low" ? " (low)" : ""), value: age + (age === 1 ? " day" : " days"), sort: age };
     }).sort(function (a, b) { return b.sort - a.sort; }).slice(0, 6);
   }
 
@@ -977,12 +972,24 @@
     });
   }
 
-  function eatFull(id) {
-    if (!findById(id)) return;
-    finishContainer(id);
+  // Single cycling button on the Flavors page:
+  //   full ("Going", solid purple) -> half ("Going", lighter purple)
+  //   -> low ("Gone", empty) -> tap again finishes/removes the tub.
+  function stateBtnLabel(state) {
+    return state === "low" ? "Gone" : "Going";
+  }
+  function stateBtnClass(state) {
+    if (state === "half") return "btn-going-half";
+    if (state === "low") return "btn-gone";
+    return "btn-going-full";
+  }
+  function stateBtnAria(flavor, state) {
+    if (state === "half") return "Mark " + flavor + " as almost gone";
+    if (state === "low") return "Finished " + flavor;
+    return "Mark " + flavor + " half eaten";
   }
 
-  function eatHalf(id) {
+  function advanceState(id) {
     var item = findById(id);
     if (!item) return;
     if (item.state === "full") {
@@ -990,7 +997,13 @@
         function () { return db.from("containers").update({ state: "half" }).eq("id", id); },
         function () { item.state = "half"; }
       );
-      armUndo({ type: "half", id: id });
+      armUndo({ type: "half", id: id, from: "full", label: "Marked half" });
+    } else if (item.state === "half") {
+      mutate(
+        function () { return db.from("containers").update({ state: "low" }).eq("id", id); },
+        function () { item.state = "low"; }
+      );
+      armUndo({ type: "half", id: id, from: "half", label: "Marked low" });
     } else {
       finishContainer(id);
     }
@@ -1243,7 +1256,9 @@
 
   function armUndo(action) {
     pendingUndo = action;
-    undoLabelEl.textContent = action.type === "finish"
+    undoLabelEl.textContent = action.label
+      ? action.label
+      : action.type === "finish"
       ? "Finished " + action.snap.flavor
       : action.type === "delete"
       ? "Deleted " + action.snap.flavor
@@ -1287,11 +1302,12 @@
 
   function undoHalf(a) {
     var item = findById(a.id);
-    if (item) item.state = "full";
+    var prev = a.from || "full";
+    if (item) item.state = prev;
     saveCache();
     render();
     if (usingSupabase) {
-      db.from("containers").update({ state: "full" }).eq("id", a.id)
+      db.from("containers").update({ state: prev }).eq("id", a.id)
         .then(function () { fetchAll(); });
     }
   }
