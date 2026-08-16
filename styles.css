@@ -283,11 +283,19 @@ html, body {
 /* Full = solid purple fill */
 .tub[data-state="full"] .body-fill,
 .tub[data-state="full"] .lid-fill { fill: var(--full); }
-.tub[data-state="full"] .half-fill { display: none; }
+.tub[data-state="full"] .half-fill,
+.tub[data-state="full"] .low-fill { display: none; }
 /* Half = white top, purple bottom half */
 .tub[data-state="half"] .body-fill,
 .tub[data-state="half"] .lid-fill { fill: #ffffff; }
 .tub[data-state="half"] .half-fill { fill: var(--full); }
+.tub[data-state="half"] .low-fill { display: none; }
+/* Low = white top, thin purple sliver at the bottom (less than half left) */
+.tub[data-state="low"] .body-fill,
+.tub[data-state="low"] .lid-fill { fill: #ffffff; }
+.tub[data-state="low"] .half-fill { display: none; }
+.tub[data-state="low"] .low-fill { fill: var(--full); }
+.low-fill { display: none; }
 
 /* Buttons */
 .btn {
@@ -302,11 +310,16 @@ html, body {
 }
 .btn:active { transform: scale(0.96); }
 
-.btn-full {
+/* Flavors-page cycling button: full -> half -> low -> (tap finishes) */
+.btn-going-full {
   background: var(--full);
   color: var(--accent-ink);
 }
-.btn-half {
+.btn-going-half {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+.btn-gone {
   background: #fff;
   color: var(--accent-ink);
   border: 1.5px solid var(--accent);
