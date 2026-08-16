@@ -2,25 +2,24 @@
 
 A mobile-friendly web app to track an ice cream inventory, **synced across devices and people** in real time via a shared [Supabase](https://supabase.com) database. No build step — plain HTML/CSS/JavaScript hosted on GitHub Pages.
 
-Each row is one physical container of a flavor, shown as **full** or **half**. Tap a button when you eat some:
+Each row is one physical container of a flavor, shown as **full**, **half**, or **low** (less than half). Tap the button on a row to cycle through it:
 
-- **Full** — you finished a whole container → it's removed.
-- **Half** — you ate half → a **full** container becomes **half**; a **half** container is finished and removed.
+- **Going** (solid purple) — the tub is full. Tap → becomes **half**.
+- **Going** (lighter purple) — about half left. Tap → becomes **low**.
+- **Gone** (empty/white) — just dregs left. Tap → the tub is finished and removed.
 - **➕** — add containers: pick a flavor, **how many** to add at once, the **date made** (defaults to today, editable), and optional **notes** (e.g. recipe tweaks).
 
 Dates, flavors, and notes for each container can be edited later from the **Inventory** page (expand a flavor). Tapping a container's name on the **Flavors** page jumps to it on the **Inventory** page, with its flavor group expanded and the tub briefly highlighted. Opening the app with a `?tub=<container-id>` link (e.g. from a scanned QR label) jumps the other way — to the **Flavors** page — and highlights that exact container, ready to mark Full/Half.
 
 There are three pages, switched via the bottom tab bar:
 
-- **Containers** — every container, sorted alphabetically so the same flavors group together. Each shows a tub icon (filled = full, outline with ½ = half) and its date.
+- **Containers** — every container, sorted alphabetically so the same flavors group together. Each shows a tub icon (solid fill = full, top half white/bottom half filled = half, thin fill at the bottom = low) and its date.
 - **Inventory** — a running tally of **empty containers** at the top, plus a count per flavor (shown as a tub with the number inside). Tap a flavor to expand it and see the date each container was made.
 - **Analytics** — consumption over time (Week / Month / Year, filterable by flavor), an all-time by-flavor breakdown, average wait time per flavor (made → eaten), and which tubs have been sitting longest right now.
 
-After tapping **Full** or **Half**, a brief **Undo** bar appears at the bottom (~2.5s) to reverse an accidental tap.
+After tapping the cycling button, a brief **Undo** bar appears at the bottom (~2.5s) to reverse an accidental tap.
 
-Whenever a container is finished (the **Full** button, or **Half** on a container that was already half), the empty-container tally goes up by one. Adding new tubs draws the tally back **down** by however many you add (it never goes below zero), on the assumption you refilled empties. **Reset** zeroes it manually.
-
-A full container shows both **Full** and **Half**; a half container shows only **Half** (that's all that's left in it).
+Whenever a container is finished (tapping **Gone**), the empty-container tally goes up by one. Adding new tubs draws the tally back **down** by however many you add (it never goes below zero), on the assumption you refilled empties. **Reset** zeroes it manually.
 
 Changes made on one device appear on the others automatically (real-time). A `localStorage` copy is kept as an offline cache so the app still paints instantly if the network is momentarily unavailable.
 
@@ -55,7 +54,7 @@ The Supabase project has one table, `public.containers`, created with:
 create table if not exists public.containers (
   id uuid primary key default gen_random_uuid(),
   flavor text not null,
-  state text not null default 'full' check (state in ('full','half')),
+  state text not null default 'full' check (state in ('full','half','low')),
   date_made date not null default current_date,
   notes text,
   created_at timestamptz not null default now()
@@ -103,6 +102,13 @@ alter publication supabase_realtime add table public.consumptions;
 > ```sql
 > alter table public.consumptions add column if not exists notes text;
 > ```
+>
+> **Migrating for the "low" (less-than-half) state:** if your `containers` table's `state` check constraint only allows `'full'` and `'half'`, widen it so the app can save the new `low` state:
+> ```sql
+> alter table public.containers drop constraint if exists containers_state_check;
+> alter table public.containers add constraint containers_state_check check (state in ('full','half','low'));
+> ```
+> (If Postgres named your constraint something other than the default `containers_state_check`, find its real name first with `select conname from pg_constraint where conrelid = 'public.containers'::regclass and contype = 'c';` and drop that instead.)
 
 > Access is currently **open** (anyone with the app can read/write). To lock it down later, tighten these policies or add Supabase Auth.
 
