@@ -1,5 +1,3 @@
-
-```javascript
 /* Geri's Glideria — ice cream inventory
  *
  * containers  : one row per physical tub { id, flavor, state, date_made }
