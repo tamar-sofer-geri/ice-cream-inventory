@@ -1,5 +1,3 @@
-/* Geri's Glideria — ice cream inventory
- *
  * containers  : one row per physical tub { id, flavor, state, date_made }
  * empties     : running count of empty tubs on hand (increment on finish,
  *               decrement when new tubs are made)
