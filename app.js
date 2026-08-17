@@ -76,6 +76,10 @@
   var analyticsFlavor = "all";
   var pendingUndo = null;
   var undoTimer = null;
+  // If renderInventory() is skipped because the user has an edit field
+  // focused (see below), the sorted list it was asked to draw is stashed
+  // here and drawn once they blur.
+  var pendingInventorySorted = null;
   // Deep link: /?tub=<id> opens the Flavors view focused on that container.
   var deepLinkTub = null;
   try { deepLinkTub = new URLSearchParams(location.search).get("tub"); } catch (e) {}
@@ -527,6 +531,16 @@
   }
 
   function renderInventory(sorted) {
+    // This rebuilds the whole list from scratch, which would yank focus (and
+    // any un-blurred keystrokes) out from under a date/flavor/notes field the
+    // user is actively editing — e.g. a realtime sync from another device, or
+    // the tab regaining visibility, can fire this mid-edit. Defer instead of
+    // rebuilding; a focusout listener below flushes the deferred render once
+    // editing ends.
+    if (document.activeElement && summaryEl.contains(document.activeElement)) {
+      pendingInventorySorted = sorted;
+      return;
+    }
     // Flavors currently in stock...
     var byKey = {}, order = [];
     groupByFlavor(sorted).forEach(function (g) {
@@ -674,6 +688,19 @@
     renderConsumedSection();
     applyInventoryFocusClass(false); // keep a tap-through highlight through re-renders
   }
+
+  // Once an edit field on the Inventory page loses focus, draw whatever
+  // render got deferred while it was active (see renderInventory above).
+  // The timeout lets a same-tick "change" handler's own render (which
+  // already reflects the edit) run first and clear the pending one.
+  summaryEl.addEventListener("focusout", function () {
+    setTimeout(function () {
+      if (!pendingInventorySorted) return;
+      var sorted = pendingInventorySorted;
+      pendingInventorySorted = null;
+      renderInventory(sorted);
+    }, 0);
+  });
 
   // Collapsible "Consumed" row at the bottom of Inventory: every finished tub
   // with a "Return to shelf" button to undo an accidental consumption.
@@ -1106,21 +1133,23 @@
 
   // Name new tubs "<flavor> <n>", using the lowest numbers not already taken
   // by in-stock tubs of the same base flavor. A name typed with an explicit
-  // trailing number is kept verbatim.
+  // trailing number is kept verbatim — but only when adding exactly one tub;
+  // for qty > 1 that number is just the starting point, so multiple tubs
+  // don't all end up sharing one name (and thus one indistinguishable id).
   function nextFlavorNames(flavor, qty) {
     var out = [], i;
-    if (flavorNumber(flavor) !== null) {
-      for (i = 0; i < qty; i++) out.push(flavor);
-      return out;
-    }
+    var explicitNum = flavorNumber(flavor);
+    if (explicitNum !== null && qty === 1) return [flavor];
+    var base = explicitNum !== null ? baseFlavor(flavor) : flavor;
+    var start = explicitNum !== null ? explicitNum : 1;
     var used = {};
     inventory.forEach(function (it) {
-      if (baseFlavor(it.flavor).toLowerCase() !== flavor.toLowerCase()) return;
+      if (baseFlavor(it.flavor).toLowerCase() !== base.toLowerCase()) return;
       var n = flavorNumber(it.flavor);
       if (n !== null) used[n] = true;
     });
-    for (i = 1; out.length < qty; i++) {
-      if (!used[i]) out.push(flavor + " " + i);
+    for (i = start; out.length < qty; i++) {
+      if (!used[i]) out.push(base + " " + i);
     }
     return out;
   }
