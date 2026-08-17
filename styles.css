@@ -318,8 +318,8 @@ html, body {
 .btn-going-half {
   background: repeating-linear-gradient(
     45deg,
-    var(--full) 0px, var(--full) 6px,
-    #ffffff 6px, #ffffff 12px
+    var(--full) 0px, var(--full) 1px,
+    #ffffff 1px, #ffffff 2px
   );
   border: 1.5px solid var(--full);
   color: var(--accent-ink);
