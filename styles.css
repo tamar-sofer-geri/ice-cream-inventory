@@ -253,22 +253,6 @@ html, body {
   gap: 8px;
 }
 
-.recipe-btn {
-  flex: 0 0 auto;
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  border: 1.5px solid var(--line);
-  background: var(--card);
-  font-size: 15px;
-  line-height: 1;
-  cursor: pointer;
-  display: grid;
-  place-items: center;
-  padding: 0;
-}
-.recipe-btn:active { transform: scale(0.94); }
-
 /* Container icon â€” ice cream tub */
 .tub {
   flex: 0 0 auto;
@@ -498,7 +482,12 @@ html, body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  transition: opacity 0.15s;
 }
+.summary-flavor.pressing { opacity: 0.5; }
 .summary-caret {
   flex: 0 0 auto;
   color: var(--muted);

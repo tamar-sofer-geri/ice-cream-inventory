@@ -498,14 +498,6 @@
     var actions = document.createElement("span");
     actions.className = "row-actions";
 
-    var recipeBtn = document.createElement("button");
-    recipeBtn.type = "button";
-    recipeBtn.className = "recipe-btn";
-    recipeBtn.textContent = "📖";
-    recipeBtn.setAttribute("aria-label", "Recipe for " + baseFlavor(item.flavor));
-    recipeBtn.addEventListener("click", function () { openRecipe(baseFlavor(item.flavor)); });
-    actions.appendChild(recipeBtn);
-
     var goBtn = document.createElement("button");
     goBtn.type = "button";
     goBtn.className = "btn " + stateBtnClass(item.state);
@@ -638,6 +630,37 @@
       flavor.className = "summary-flavor";
       flavor.textContent = g.flavor;
 
+      // Long-press the flavor name to open its recipe, without stealing the
+      // tap-to-expand/swipe-to-hide gestures already on the row.
+      var longPressed = false;
+      var pressTimer = null, pressStartX = 0, pressStartY = 0;
+      flavor.addEventListener("pointerdown", function (e) {
+        if (e.pointerType === "mouse" && e.button !== 0) return;
+        pressStartX = e.clientX; pressStartY = e.clientY;
+        try { flavor.setPointerCapture(e.pointerId); } catch (er) {}
+        flavor.classList.add("pressing");
+        pressTimer = setTimeout(function () {
+          pressTimer = null;
+          longPressed = true;
+          flavor.classList.remove("pressing");
+          openRecipe(g.flavor);
+        }, 500);
+      });
+      flavor.addEventListener("pointermove", function (e) {
+        if (!pressTimer) return;
+        if (Math.abs(e.clientX - pressStartX) > 10 || Math.abs(e.clientY - pressStartY) > 10) {
+          clearTimeout(pressTimer);
+          pressTimer = null;
+          flavor.classList.remove("pressing");
+        }
+      });
+      function cancelFlavorPress() {
+        if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
+        flavor.classList.remove("pressing");
+      }
+      flavor.addEventListener("pointerup", cancelFlavorPress);
+      flavor.addEventListener("pointercancel", cancelFlavorPress);
+
       head.appendChild(count);
       head.appendChild(flavor);
 
@@ -648,6 +671,7 @@
         caret.textContent = "›";
         head.appendChild(caret);
         head.addEventListener("click", function () {
+          if (longPressed) { longPressed = false; return; }
           expanded[key] = !expanded[key];
           li.classList.toggle("open", expanded[key]);
           head.setAttribute("aria-expanded", expanded[key] ? "true" : "false");

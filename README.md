@@ -8,14 +8,13 @@ Each row is one physical container of a flavor, shown as **full**, **half**, or 
 - **Going** (lighter purple) — about half left. Tap → becomes **low**.
 - **Gone** (empty/white) — just dregs left. Tap → the tub is finished and removed.
 - **➕** — add containers: pick a flavor, **how many** to add at once, the **date made** (defaults to today, editable), and optional **notes** (e.g. recipe tweaks).
-- **📖** — open that flavor's recipe, editable right there. Shared across every tub of the same flavor (e.g. all "FroYo" tubs point to one recipe).
 
 Dates, flavors, and notes for each container can be edited later from the **Inventory** page (expand a flavor). Tapping a container's name on the **Flavors** page jumps to it on the **Inventory** page, with its flavor group expanded and the tub briefly highlighted. Opening the app with a `?tub=<container-id>` link (e.g. from a scanned QR label) jumps the other way — to the **Flavors** page — and highlights that exact container, ready to mark Full/Half.
 
 There are three pages, switched via the bottom tab bar:
 
 - **Containers** — every container, sorted alphabetically so the same flavors group together. Each shows a tub icon (solid fill = full, top half white/bottom half filled = half, thin fill at the bottom = low) and its date.
-- **Inventory** — a running tally of **empty containers** at the top, plus a count per flavor (shown as a tub with the number inside). Tap a flavor to expand it and see the date each container was made.
+- **Inventory** — a running tally of **empty containers** at the top, plus a count per flavor (shown as a tub with the number inside). Tap a flavor to expand it and see the date each container was made. Long-press a flavor's name to open its recipe, editable right there and shared across every tub of that flavor (e.g. all "FroYo" tubs point to one recipe).
 - **Analytics** — consumption over time (Week / Month / Year, filterable by flavor), an all-time by-flavor breakdown, average wait time per flavor (made → eaten), and which tubs have been sitting longest right now.
 
 After tapping the cycling button, a brief **Undo** bar appears at the bottom (~2.5s) to reverse an accidental tap.
@@ -99,7 +98,7 @@ create policy "public delete" on public.consumptions for delete using (true);
 alter publication supabase_realtime add table public.consumptions;
 ```
 
-And a `public.flavor_recipes` table (one row per flavor, tapped open from the 📖 button on the Flavors page):
+And a `public.flavor_recipes` table (one row per flavor, opened by long-pressing a flavor's name on the Inventory page):
 
 ```sql
 create table if not exists public.flavor_recipes (
