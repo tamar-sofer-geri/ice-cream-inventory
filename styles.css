@@ -43,15 +43,17 @@ html, body {
 .brand-logo-link {
   flex: 0 1 auto;
   display: block;
+  height: 58px;
+  max-width: calc(100% - 60px);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
 .brand-logo-link:active .brand-logo { transform: scale(0.96); }
 
 .brand-logo {
-  height: 58px;
+  display: block;
+  height: 100%;
   width: auto;
-  max-width: calc(100% - 60px);
   transition: transform 0.1s;
 }
 
