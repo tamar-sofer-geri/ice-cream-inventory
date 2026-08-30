@@ -21,6 +21,8 @@
   // Flavors the user swiped away while at 0 stock. Kept per-device so their
   // consumption history (and analytics) stays intact; they reappear if restocked.
   var HIDDEN_KEY = isDemo ? "glideriaDemoHidden" : "glideriaHidden";
+  // Per-flavor recipe text, keyed the same way as HIDDEN_KEY.
+  var RECIPES_KEY = isDemo ? "glideriaDemoRecipes" : "glideriaRecipes";
   var usingSupabase = !isDemo && !!(cfg.supabaseUrl && cfg.supabaseAnonKey && window.supabase);
   var db = usingSupabase
     ? window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey)
@@ -70,6 +72,7 @@
   var consumptions = [];
   var inventory = loadCache(); // also sets emptiesCount + consumptions
   var hiddenFlavors = loadHidden();
+  var recipes = loadRecipes();
   var currentView = "containers";
   var expanded = {};
   var analyticsPeriod = "week";
@@ -290,6 +293,34 @@
     armUndo({ type: "hide", key: key, snap: { flavor: flavorName } });
   }
 
+  function loadRecipes() {
+    try {
+      var raw = window.localStorage.getItem(RECIPES_KEY);
+      var obj = raw ? JSON.parse(raw) : {};
+      return (obj && typeof obj === "object") ? obj : {};
+    } catch (e) { return {}; }
+  }
+  function saveRecipesLocal() {
+    try { window.localStorage.setItem(RECIPES_KEY, JSON.stringify(recipes)); } catch (e) { /* ignore */ }
+  }
+  function getRecipe(key) {
+    return recipes[key] || "";
+  }
+  // Set a flavor's recipe text locally + (when online) in the synced
+  // flavor_recipes table so it carries across devices.
+  function setRecipe(key, text) {
+    text = text.trim();
+    if (text) recipes[key] = text; else delete recipes[key];
+    saveRecipesLocal();
+    if (usingSupabase) {
+      var q = text
+        ? db.from("flavor_recipes").upsert({ flavor: key, recipe: text, updated_at: new Date().toISOString() }, { onConflict: "flavor" })
+        : db.from("flavor_recipes").delete().eq("flavor", key);
+      q.then(function (r) { if (r && r.error) console.warn("recipe sync failed", r.error); },
+             function (e) { console.warn("recipe sync failed", e); });
+    }
+  }
+
   /* ---------- data access ---------- */
 
   function fetchAll() {
@@ -298,9 +329,10 @@
       db.from("containers").select("*"),
       db.from("empties").select("*", { count: "exact", head: true }),
       db.from("consumptions").select("id, flavor, date_made, consumed_at, notes"),
-      db.from("hidden_flavors").select("flavor")
+      db.from("hidden_flavors").select("flavor"),
+      db.from("flavor_recipes").select("flavor, recipe")
     ]).then(function (res) {
-      var c = res[0], e = res[1], k = res[2], h = res[3];
+      var c = res[0], e = res[1], k = res[2], h = res[3], rc = res[4];
       if (c.error) throw c.error;
       inventory = c.data || [];
       if (!e.error && typeof e.count === "number") emptiesCount = e.count;
@@ -315,6 +347,12 @@
         hiddenFlavors = {};
         h.data.forEach(function (r) { hiddenFlavors[String(r.flavor).toLowerCase()] = true; });
         saveHidden();
+      }
+      // flavor_recipes is likewise optional until its SQL has been run.
+      if (rc && !rc.error && Array.isArray(rc.data)) {
+        recipes = {};
+        rc.data.forEach(function (r) { if (r.recipe) recipes[String(r.flavor).toLowerCase()] = r.recipe; });
+        saveRecipesLocal();
       }
       saveCache();
       showNote("");
@@ -459,6 +497,14 @@
 
     var actions = document.createElement("span");
     actions.className = "row-actions";
+
+    var recipeBtn = document.createElement("button");
+    recipeBtn.type = "button";
+    recipeBtn.className = "recipe-btn";
+    recipeBtn.textContent = "📖";
+    recipeBtn.setAttribute("aria-label", "Recipe for " + baseFlavor(item.flavor));
+    recipeBtn.addEventListener("click", function () { openRecipe(baseFlavor(item.flavor)); });
+    actions.appendChild(recipeBtn);
 
     var goBtn = document.createElement("button");
     goBtn.type = "button";
@@ -1452,6 +1498,29 @@
     if (e.target.hasAttribute("data-consumed-close")) closeConsumedList();
   });
 
+  /* ---------- recipe editor ---------- */
+
+  var recipeModal = document.getElementById("recipe-modal");
+  var recipeTitleEl = document.getElementById("recipe-title");
+  var recipeTextEl = document.getElementById("recipe-text");
+  var recipeKey = null;
+
+  function openRecipe(flavorName) {
+    recipeKey = flavorName.toLowerCase();
+    recipeTitleEl.textContent = "Recipe: " + flavorName;
+    recipeTextEl.value = getRecipe(recipeKey);
+    recipeModal.hidden = false;
+    recipeTextEl.focus();
+  }
+  function closeRecipe() {
+    if (recipeKey !== null) setRecipe(recipeKey, recipeTextEl.value);
+    recipeModal.hidden = true;
+    recipeKey = null;
+  }
+  if (recipeModal) recipeModal.addEventListener("click", function (e) {
+    if (e.target.hasAttribute("data-recipe-close")) closeRecipe();
+  });
+
   /* ---------- QR scanner ---------- */
 
   // In-app label scanner: opens the camera, finds a QR, and jumps to that tub
@@ -1574,6 +1643,7 @@
     if (!modal.hidden) closeModal();
     if (consumedModal && !consumedModal.hidden) closeConsumedList();
     if (scanModal && !scanModal.hidden) closeScanner();
+    if (recipeModal && !recipeModal.hidden) closeRecipe();
   });
 
   function readAddForm() {
@@ -1615,6 +1685,7 @@
       .on("postgres_changes", { event: "*", schema: "public", table: "empties" }, function () { fetchAll(); })
       .on("postgres_changes", { event: "*", schema: "public", table: "consumptions" }, function () { fetchAll(); })
       .on("postgres_changes", { event: "*", schema: "public", table: "hidden_flavors" }, function () { fetchAll(); })
+      .on("postgres_changes", { event: "*", schema: "public", table: "flavor_recipes" }, function () { fetchAll(); })
       .subscribe();
 
     document.addEventListener("visibilitychange", function () { if (!document.hidden) fetchAll(); });

@@ -13,7 +13,7 @@
   <link rel="apple-touch-icon" href="apple-touch-icon.png" />
   <link rel="icon" href="icon.svg" type="image/svg+xml" />
   <title>Geri's Glideria</title>
-  <link rel="stylesheet" href="styles.css?v=31" />
+  <link rel="stylesheet" href="styles.css?v=32" />
 </head>
 <body>
   <div class="app">
@@ -200,11 +200,23 @@
     </div>
   </div>
 
+  <!-- Recipe editor -->
+  <div id="recipe-modal" class="modal" hidden>
+    <div class="modal-backdrop" data-recipe-close></div>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="recipe-title">
+      <h2 id="recipe-title">Recipe</h2>
+      <textarea id="recipe-text" rows="10" placeholder="Paste or type the recipe…"></textarea>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-primary" data-recipe-close>Done</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Supabase client + QR generator (no build step) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
   <script src="config.js"></script>
   <script src="label-printer.js?v=34"></script>
-  <script src="app.js?v=35"></script>
+  <script src="app.js?v=36"></script>
 </body>
 </html>

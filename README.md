@@ -8,6 +8,7 @@ Each row is one physical container of a flavor, shown as **full**, **half**, or 
 - **Going** (lighter purple) — about half left. Tap → becomes **low**.
 - **Gone** (empty/white) — just dregs left. Tap → the tub is finished and removed.
 - **➕** — add containers: pick a flavor, **how many** to add at once, the **date made** (defaults to today, editable), and optional **notes** (e.g. recipe tweaks).
+- **📖** — open that flavor's recipe, editable right there. Shared across every tub of the same flavor (e.g. all "FroYo" tubs point to one recipe).
 
 Dates, flavors, and notes for each container can be edited later from the **Inventory** page (expand a flavor). Tapping a container's name on the **Flavors** page jumps to it on the **Inventory** page, with its flavor group expanded and the tub briefly highlighted. Opening the app with a `?tub=<container-id>` link (e.g. from a scanned QR label) jumps the other way — to the **Flavors** page — and highlights that exact container, ready to mark Full/Half.
 
@@ -96,6 +97,22 @@ create policy "public read"   on public.consumptions for select using (true);
 create policy "public insert" on public.consumptions for insert with check (true);
 create policy "public delete" on public.consumptions for delete using (true);
 alter publication supabase_realtime add table public.consumptions;
+```
+
+And a `public.flavor_recipes` table (one row per flavor, tapped open from the 📖 button on the Flavors page):
+
+```sql
+create table if not exists public.flavor_recipes (
+  flavor text primary key,
+  recipe text,
+  updated_at timestamptz not null default now()
+);
+alter table public.flavor_recipes enable row level security;
+create policy "public read"   on public.flavor_recipes for select using (true);
+create policy "public insert" on public.flavor_recipes for insert with check (true);
+create policy "public update" on public.flavor_recipes for update using (true) with check (true);
+create policy "public delete" on public.flavor_recipes for delete using (true);
+alter publication supabase_realtime add table public.flavor_recipes;
 ```
 
 > **Migrating an existing database:** if your `consumptions` table was created before the `notes` column existed, run this once in the Supabase SQL editor:
