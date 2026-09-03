@@ -1662,13 +1662,38 @@
     if (e.target.hasAttribute("data-print-close")) printStatus.hidden = true;
     if (e.target.hasAttribute("data-print-test") && window.GlideriaPrinter) window.GlideriaPrinter.selfTest();
   });
+  function closeAnyOpenOverlay() {
+    if (!modal.hidden) { closeModal(); return true; }
+    if (consumedModal && !consumedModal.hidden) { closeConsumedList(); return true; }
+    if (scanModal && !scanModal.hidden) { closeScanner(); return true; }
+    if (recipeModal && !recipeModal.hidden) { closeRecipe(); return true; }
+    if (printStatus && !printStatus.hidden) { printStatus.hidden = true; return true; }
+    return false;
+  }
+
   document.addEventListener("keydown", function (e) {
     if (e.key !== "Escape") return;
-    if (!modal.hidden) closeModal();
-    if (consumedModal && !consumedModal.hidden) closeConsumedList();
-    if (scanModal && !scanModal.hidden) closeScanner();
-    if (recipeModal && !recipeModal.hidden) closeRecipe();
+    closeAnyOpenOverlay();
   });
+
+  // ---------- Back-gesture guard (Android) ----------
+  // A page with no browser-history entries makes Android's back button/edge-swipe
+  // close the app outright instead of doing anything in-page. Keeping one extra
+  // history entry armed means that gesture always lands on us as a popstate
+  // event instead — closing an open overlay first, or returning to Containers.
+
+  var BACK_DEFAULT_VIEW = "containers";
+
+  function armBackGuard() {
+    try { history.pushState({ iceCreamGuard: true }, ""); } catch (e) { /* ignore */ }
+  }
+
+  window.addEventListener("popstate", function () {
+    if (!closeAnyOpenOverlay() && currentView !== BACK_DEFAULT_VIEW) switchView(BACK_DEFAULT_VIEW);
+    armBackGuard();
+  });
+
+  armBackGuard();
 
   function readAddForm() {
     var flavor = flavorInput.value.trim();
