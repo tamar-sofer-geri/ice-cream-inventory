@@ -27,7 +27,7 @@
     mediaType: 0x0a,    // 0x0a = die-cut labels with gaps
     includeQR: true,
     showConeIcon: true, // little ice-cream-cone icon above the date/time
-    rightMarginMm: 2    // extra clearance from the head's right edge — raise
+    rightMarginMm: 4    // extra clearance from the head's right edge — raise
                          // this if content (usually the QR, bottom-right)
                          // prints past the label's physical right edge
   };
