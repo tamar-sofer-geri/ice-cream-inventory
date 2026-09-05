@@ -26,7 +26,10 @@
     feedDots: 40,       // feed after printing
     mediaType: 0x0a,    // 0x0a = die-cut labels with gaps
     includeQR: true,
-    showConeIcon: true  // little ice-cream-cone icon above the date/time
+    showConeIcon: true, // little ice-cream-cone icon above the date/time
+    rightMarginMm: 2    // extra clearance from the head's right edge — raise
+                         // this if content (usually the QR, bottom-right)
+                         // prints past the label's physical right edge
   };
   var DPM = 8;                 // dots per mm (203 dpi)
   var HEAD_BYTES = 72;         // M220 print-head width in bytes (576 px)
@@ -365,7 +368,10 @@
         qrDim = qrCell * qrCount;
       } catch (e) { log("QR skipped: " + e.message); qr = null; }
     }
-    var ox = w - pad - qrDim, oy = h - pad - qrDim;   // QR corner origin
+    // Extra clearance for the QR specifically — it sits right at the label's
+    // physical corner, which is the tightest spot for die-cut/edge tolerance.
+    var qrPad = pad + 4;
+    var ox = w - qrPad - qrDim, oy = h - qrPad - qrDim;   // QR corner origin
 
     // Flavor: full label width, along the top, wrapped + auto-fit.
     var fl = fitWrapped(ctx, container.flavor, w - pad * 2, 2, 48, "bold");
@@ -409,7 +415,8 @@
     var data = canvas.getContext("2d").getImageData(0, 0, w, h).data;
     var out = new Uint8Array(HEAD_BYTES * h);
     var headPx = HEAD_BYTES * 8;
-    var xOffset = CFG.align === "right" ? Math.max(0, headPx - w)
+    var marginPx = Math.round((CFG.rightMarginMm || 0) * DPM);
+    var xOffset = CFG.align === "right" ? Math.max(0, headPx - w - marginPx)
                 : CFG.align === "center" ? Math.max(0, Math.floor((headPx - w) / 2)) : 0;
     for (var y = 0; y < h; y++) {
       for (var x = 0; x < w; x++) {
