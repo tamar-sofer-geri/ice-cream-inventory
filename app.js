@@ -1068,18 +1068,20 @@
   }
 
   // Single cycling button on the Flavors page:
-  //   full ("Going", solid purple) -> half ("Going", lighter purple)
-  //   -> low ("Gone", empty) -> tap again finishes/removes the tub.
+  //   full ("Full", solid purple) -> half ("Half", lighter purple)
+  //   -> low ("Low", empty) -> tap again finishes/removes the tub.
   function stateBtnLabel(state) {
-    return state === "low" ? "Gone" : "Going";
+    if (state === "half") return "Half";
+    if (state === "low") return "Low";
+    return "Full";
   }
   function stateBtnClass(state) {
-    if (state === "half") return "btn-going-half";
-    if (state === "low") return "btn-gone";
-    return "btn-going-full";
+    if (state === "half") return "btn-half";
+    if (state === "low") return "btn-low";
+    return "btn-full";
   }
   function stateBtnAria(flavor, state) {
-    if (state === "half") return "Mark " + flavor + " as almost gone";
+    if (state === "half") return "Mark " + flavor + " as low";
     if (state === "low") return "Finished " + flavor;
     return "Mark " + flavor + " half eaten";
   }

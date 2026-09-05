@@ -321,11 +321,11 @@ html, body {
 .btn:active { transform: scale(0.96); }
 
 /* Flavors-page cycling button: full -> half -> low -> (tap finishes) */
-.btn-going-full {
+.btn-full {
   background: var(--full);
   color: var(--accent-ink);
 }
-.btn-going-half {
+.btn-half {
   background: repeating-linear-gradient(
     45deg,
     var(--full) 0px, var(--full) 1px,
@@ -334,7 +334,7 @@ html, body {
   border: 1.5px solid var(--full);
   color: var(--accent-ink);
 }
-.btn-gone {
+.btn-low {
   background: #fff;
   color: var(--accent-ink);
   border: 1.5px solid var(--accent);

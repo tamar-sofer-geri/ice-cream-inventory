@@ -4,9 +4,9 @@ A mobile-friendly web app to track an ice cream inventory, **synced across devic
 
 Each row is one physical container of a flavor, shown as **full**, **half**, or **low** (less than half). Tap the button on a row to cycle through it:
 
-- **Going** (solid purple) — the tub is full. Tap → becomes **half**.
-- **Going** (lighter purple) — about half left. Tap → becomes **low**.
-- **Gone** (empty/white) — just dregs left. Tap → the tub is finished and removed.
+- **Full** (solid purple) — the tub is full. Tap → becomes **half**.
+- **Half** (lighter purple) — about half left. Tap → becomes **low**.
+- **Low** (empty/white) — just dregs left. Tap → the tub is finished and removed.
 - **➕** — add containers: pick a flavor, **how many** to add at once, the **date made** (defaults to today, editable), and optional **notes** (e.g. recipe tweaks).
 
 Dates, flavors, and notes for each container can be edited later from the **Inventory** page (expand a flavor). Tapping a container's name on the **Flavors** page jumps to it on the **Inventory** page, with its flavor group expanded and the tub briefly highlighted. Opening the app with a `?tub=<container-id>` link (e.g. from a scanned QR label) jumps the other way — to the **Flavors** page — and highlights that exact container, ready to mark Full/Half.
