@@ -196,8 +196,7 @@
   // ---- label rendering --------------------------------------------------
   function shortDateTime(container) {
     var dm = container.date_made ? new Date(String(container.date_made).slice(0, 10) + "T00:00:00") : null;
-    var months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    var dateStr = dm ? (months[dm.getMonth()] + " " + dm.getDate() + ", " + dm.getFullYear()) : "";
+    var dateStr = dm ? ((dm.getMonth() + 1) + "/" + dm.getDate() + "/" + dm.getFullYear()) : "";
     var t = container.created_at ? new Date(container.created_at) : null;
     var timeStr = "";
     if (t) {
