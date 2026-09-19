@@ -443,7 +443,7 @@ html, body {
 /* Swipe-right-to-hide for out-of-stock flavors */
 .summary-item.has-swipe { position: relative; background: #c0392b; }
 .summary-item.has-swipe::before {
-  content: "ðŸ—‘ï¸ Hide";
+  content: "🗑️ Hide";
   position: absolute;
   left: 16px; top: 0; bottom: 0;
   display: flex;
