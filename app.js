@@ -756,6 +756,7 @@
     });
 
     renderConsumedSection();
+    renderHiddenFlavorsSection();
     applyInventoryFocusClass(false); // keep a tap-through highlight through re-renders
   }
 
@@ -830,6 +831,80 @@
         back.textContent = "↩︎ Return to shelf";
         (function (c) { back.addEventListener("click", function () { returnToShelf(c); }); })(cons);
         row.appendChild(info); row.appendChild(back);
+        log.appendChild(row);
+      });
+
+    li.appendChild(head); li.appendChild(log);
+    summaryEl.appendChild(li);
+  }
+
+  // Best-effort display name for a hidden flavor's lowercase key — the
+  // hidden_flavors table only stores the key, so recover the original
+  // casing from a container/consumption that still has it.
+  function displayNameForKey(key) {
+    for (var i = 0; i < inventory.length; i++) {
+      if (baseFlavor(inventory[i].flavor).toLowerCase() === key) return baseFlavor(inventory[i].flavor);
+    }
+    for (var i = 0; i < consumptions.length; i++) {
+      if (baseFlavor(consumptions[i].flavor).toLowerCase() === key) return baseFlavor(consumptions[i].flavor);
+    }
+    return key.charAt(0).toUpperCase() + key.slice(1);
+  }
+
+  // Collapsible "Hidden flavors" row at the bottom of Inventory, below
+  // Consumed: every flavor swiped off the list, with an "Unhide" button.
+  function renderHiddenFlavorsSection() {
+    var keys = Object.keys(hiddenFlavors);
+    if (!keys.length) return;
+    var li = document.createElement("li");
+    li.className = "summary-item hidden-flavors-section";
+    var open = !!expanded.__hidden__;
+    if (open) li.classList.add("open");
+
+    var head = document.createElement("button");
+    head.type = "button";
+    head.className = "summary-head";
+    head.setAttribute("aria-expanded", open ? "true" : "false");
+    head.setAttribute("aria-label", keys.length + " hidden flavors");
+
+    var count = document.createElement("span");
+    count.className = "summary-count consumed-count";
+    count.setAttribute("aria-hidden", "true");
+    count.textContent = keys.length;
+
+    var label = document.createElement("span");
+    label.className = "summary-flavor";
+    label.textContent = "Hidden flavors";
+
+    var caret = document.createElement("span");
+    caret.className = "summary-caret";
+    caret.setAttribute("aria-hidden", "true");
+    caret.textContent = "›";
+
+    head.appendChild(count); head.appendChild(label); head.appendChild(caret);
+    head.addEventListener("click", function () {
+      expanded.__hidden__ = !expanded.__hidden__;
+      li.classList.toggle("open", expanded.__hidden__);
+      head.setAttribute("aria-expanded", expanded.__hidden__ ? "true" : "false");
+    });
+
+    var log = document.createElement("ul");
+    log.className = "summary-dates consumed-log";
+    keys.map(function (key) { return { key: key, name: displayNameForKey(key) }; })
+      .sort(function (a, b) { return a.name.localeCompare(b.name); })
+      .forEach(function (entry) {
+        var row = document.createElement("li");
+        row.className = "consumed-log-row";
+        var info = document.createElement("div");
+        info.className = "clr-info";
+        var f = document.createElement("span"); f.className = "clr-flavor"; f.textContent = entry.name;
+        info.appendChild(f);
+        var unhideBtn = document.createElement("button");
+        unhideBtn.type = "button";
+        unhideBtn.className = "return-btn";
+        unhideBtn.textContent = "↩︎ Unhide";
+        (function (k) { unhideBtn.addEventListener("click", function () { setHidden(k, false); render(); }); })(entry.key);
+        row.appendChild(info); row.appendChild(unhideBtn);
         log.appendChild(row);
       });
 

@@ -499,6 +499,8 @@ html, body {
 
 /* Consumed section at the bottom of Inventory */
 .consumed-section .summary-flavor { color: var(--muted); }
+/* Hidden flavors section, right below Consumed */
+.hidden-flavors-section .summary-flavor { color: var(--muted); }
 .consumed-count {
   display: flex;
   align-items: center;
