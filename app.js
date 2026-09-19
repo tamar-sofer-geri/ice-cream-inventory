@@ -574,8 +574,12 @@
     // user is actively editing — e.g. a realtime sync from another device, or
     // the tab regaining visibility, can fire this mid-edit. Defer instead of
     // rebuilding; a focusout listener below flushes the deferred render once
-    // editing ends.
-    if (document.activeElement && summaryEl.contains(document.activeElement)) {
+    // editing ends. Only text inputs need this — checking any focused
+    // descendant also caught action buttons (Unhide, Return to shelf, …),
+    // which keep focus after a tap on Android Chrome, silently deferring
+    // their own render until some later, unrelated focusout.
+    var ae = document.activeElement;
+    if (ae && ae.tagName === "INPUT" && summaryEl.contains(ae)) {
       pendingInventorySorted = sorted;
       return;
     }
