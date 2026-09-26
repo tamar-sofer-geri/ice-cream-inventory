@@ -1515,6 +1515,8 @@
 
   /* ---------- view switching ---------- */
 
+  var VIEW_KEY = "glideria-view";
+
   function switchView(view) {
     currentView = view;
     document.getElementById("view-containers").hidden = view !== "containers";
@@ -1526,6 +1528,7 @@
       if (active) t.setAttribute("aria-current", "page"); else t.removeAttribute("aria-current");
     });
     renderHeaderCount();
+    try { window.sessionStorage.setItem(VIEW_KEY, view); } catch (e) { /* storage blocked — tab just won't survive a refresh */ }
   }
 
   Array.prototype.forEach.call(document.querySelectorAll(".tab"), function (t) {
@@ -1829,6 +1832,16 @@
     try { window.localStorage.removeItem(CACHE_KEY); } catch (e) { /* ignore */ }
     location.reload();
   });
+
+  // Pull-to-refresh reloads the page, which would otherwise dump you back on
+  // Containers. sessionStorage (not localStorage) survives a reload but not
+  // closing the app, so a fresh launch still starts on Containers. Restored
+  // before the first render so it draws the right view straight away; a QR
+  // deep link still wins, since it switches to Containers once it's handled.
+  try {
+    var savedView = window.sessionStorage.getItem(VIEW_KEY);
+    if (savedView && document.getElementById("view-" + savedView)) switchView(savedView);
+  } catch (e) { /* storage blocked — start on the default view */ }
 
   render();
   fetchAll();
