@@ -27,9 +27,9 @@
     mediaType: 0x0a,    // 0x0a = die-cut labels with gaps
     includeQR: true,
     showConeIcon: true, // little ice-cream-cone icon above the date/time
-    rightMarginMm: 4    // extra clearance from the head's right edge — raise
-                         // this if content (usually the QR, bottom-right)
-                         // prints past the label's physical right edge
+    rightMarginMm: 2.5  // shifts the design left of the head's right edge —
+                         // raise if the right side (QR) clips, lower if the
+                         // left side (start of the flavor name) clips
   };
   var DPM = 8;                 // dots per mm (203 dpi)
   var HEAD_BYTES = 72;         // M220 print-head width in bytes (576 px)
@@ -373,7 +373,8 @@
     var ox = w - qrPad - qrDim, oy = h - qrPad - qrDim;   // QR corner origin
 
     // Flavor: full label width, along the top, wrapped + auto-fit.
-    var fl = fitWrapped(ctx, container.flavor, w - pad * 2, 2, 48, "bold");
+    var flPad = pad + 4;
+    var fl = fitWrapped(ctx, container.flavor, w - flPad * 2, 2, 48, "bold");
     ctx.textAlign = "center";
     setFont(ctx, fl.size, "bold");
     var y = pad;
