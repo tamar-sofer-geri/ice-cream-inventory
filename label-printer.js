@@ -27,9 +27,9 @@
     mediaType: 0x0a,    // 0x0a = die-cut labels with gaps
     includeQR: true,
     showConeIcon: true, // little ice-cream-cone icon above the date/time
-    rightMarginMm: 2.5  // shifts the design left of the head's right edge —
-                         // raise if the right side (QR) clips, lower if the
-                         // left side (start of the flavor name) clips
+    shiftRightMm: 6     // moves the print toward the label's RIGHT edge as
+                         // read (verified on the M220, 2026-11-24). Raise if
+                         // the left (flavor name) clips, lower if the QR clips.
   };
   var DPM = 8;                 // dots per mm (203 dpi)
   var HEAD_BYTES = 72;         // M220 print-head width in bytes (576 px)
@@ -415,7 +415,7 @@
     var data = canvas.getContext("2d").getImageData(0, 0, w, h).data;
     var out = new Uint8Array(HEAD_BYTES * h);
     var headPx = HEAD_BYTES * 8;
-    var marginPx = Math.round((CFG.rightMarginMm || 0) * DPM);
+    var marginPx = Math.round((CFG.shiftRightMm || 0) * DPM);
     var xOffset = CFG.align === "right" ? Math.max(0, headPx - w - marginPx)
                 : CFG.align === "center" ? Math.max(0, Math.floor((headPx - w) / 2)) : 0;
     for (var y = 0; y < h; y++) {
